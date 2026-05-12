@@ -10,14 +10,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import cu.thunder.ai.navigation.NavRoutes
 import cu.thunder.ai.ui.screens.*
 import cu.thunder.ai.ui.theme.ThunderAITheme
 import cu.thunder.ai.utils.DataStoreHelper
 import cu.thunder.ai.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,8 +73,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        composable(NavRoutes.CHAT) { backStackEntry ->
-                            val chatId = backStackEntry.arguments?.getString("chatId")?.toLongOrNull() ?: -1L
+                        composable(
+                            route = NavRoutes.CHAT,
+                            arguments = listOf(navArgument("chatId") { type = NavType.LongType })
+                        ) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getLong("chatId") ?: -1L
                             ChatScreen(
                                 chatId = chatId,
                                 viewModel = chatViewModel,
@@ -81,13 +87,13 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(NavRoutes.SETTINGS) {
+                            val scope = rememberCoroutineScope()
                             SettingsScreen(
                                 isDarkMode = isDarkMode,
                                 onThemeChanged = { dark ->
                                     isDarkMode = dark
-                                    kotlinx.coroutines.GlobalScope.launch {
-    DataStoreHelper.saveDarkMode(context, dark)
-}
+                                    scope.launch {
+                                        DataStoreHelper.saveDarkMode(context, dark)
                                     }
                                 },
                                 onBack = { navController.popBackStack() }
