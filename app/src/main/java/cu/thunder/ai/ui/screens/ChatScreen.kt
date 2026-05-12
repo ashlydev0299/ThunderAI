@@ -63,7 +63,6 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberScrollState()
-    val haptic = LocalHapticFeedback.current
 
     var chatInput by remember { mutableStateOf("") }
 
@@ -79,7 +78,6 @@ fun ChatScreen(
 
     BackHandler { onBack() }
 
-    // Detección de internet
     LaunchedEffect(Unit) {
         viewModel.checkConnectivity(context)
     }
@@ -183,7 +181,6 @@ fun ChatScreen(
                 .padding(paddingValues)
                 .verticalScroll(listState)
         ) {
-            // Banner sin conexión
             AnimatedVisibility(
                 visible = isOffline,
                 enter = slideInVertically() + fadeIn(),
@@ -198,7 +195,6 @@ fun ChatScreen(
                 }
             }
 
-            // Mensajes
             messages.forEach { msg ->
                 ChatBubbleItem(
                     content = msg.content,
@@ -208,17 +204,16 @@ fun ChatScreen(
                 )
             }
 
-            // Indicador de carga
             if (isLoading) {
-                ChatBubbleItem(
+                ChatBubbleBox(
                     owner = ChatBubbleOwner.Assistant,
+                    onClick = {},
+                    onLongClick = {},
                     content = {
                         Box(modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)) {
                             AnimatedDots()
                         }
-                    },
-                    isTypewriter = false,
-                    isNewChat = false
+                    }
                 )
             }
 
@@ -265,16 +260,6 @@ fun ChatBubbleItem(
             }
         }
     )
-}
-
-@Composable
-fun ChatBubbleItem(
-    owner: ChatBubbleOwner,
-    content: @Composable (ColumnScope.() -> Unit),
-    isTypewriter: Boolean,
-    isNewChat: Boolean
-) {
-    ChatBubbleBox(owner = owner, onClick = {}, onLongClick = {}, content = content)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
