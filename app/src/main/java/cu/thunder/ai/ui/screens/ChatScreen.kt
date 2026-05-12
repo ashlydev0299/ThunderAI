@@ -277,7 +277,7 @@ fun ChatScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (inputEnabled) {
-                        IconButton(onClick = { viewModel.startVoiceInput(context) }, modifier = Modifier.size(40.dp)) {
+                        IconButton(onClick = { onClick = { viewModel.startVoiceInput(context) { recognizedText -> chatInput = recognizedText } }, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Outlined.Mic, "Voz", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         }
 

@@ -177,7 +177,6 @@ class ChatViewModel : ViewModel() {
                             }
                         }
 
-                        // Notificación al terminar respuesta
                         showResponseNotification(response)
                     }.onFailure { error ->
                         val errorMsg = ChatMessage(
@@ -207,8 +206,14 @@ class ChatViewModel : ViewModel() {
         sendMessage(lastUserMsg.content)
     }
 
-    fun startVoiceInput(context: Context) {
-        Toast.makeText(context, "Reconocimiento de voz próximamente", Toast.LENGTH_SHORT).show()
+    fun startVoiceInput(context: Context, onResult: (String) -> Unit) {
+        try {
+            (context as? cu.thunder.ai.MainActivity)?.startVoiceRecognition { text ->
+                onResult(text)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Reconocimiento de voz no disponible", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun renameChat(chatId: Long, newTitle: String) {

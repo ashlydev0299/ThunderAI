@@ -81,4 +81,7 @@ dependencies {
 
     // Coil
     implementation 'io.coil-kt:coil-compose:2.5.0'
+    
+    // Speech Recognition
+implementation 'androidx.core:core-ktx:1.12.0'
 }
