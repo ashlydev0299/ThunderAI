@@ -155,7 +155,7 @@ fun ChatScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(R.string.no_internet_connection).uppercase(),
+                            text = context.getString(R.string.no_internet_connection).uppercase(),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
@@ -211,7 +211,7 @@ fun ChatScreen(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("", msg.content))
-                                Toast.makeText(context, stringResource(R.string.text_copied), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.text_copied), Toast.LENGTH_SHORT).show()
                                 showBubbleMenu = null
                             },
                             leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp)) }
@@ -354,7 +354,12 @@ fun ChatBubbleDeepSeek(
     val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isUser) 16.dp else 4.dp, bottomEnd = if (isUser) 4.dp else 16.dp)
 
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = arrangement) {
-        Surface(modifier = Modifier.widthIn(max = 320.dp).combinedClickable(onClick = {}, onLongClick = onLongPress), shape = shape, color = bgColor, shadowElevation = 0.dp) {
+        Surface(
+            modifier = Modifier.widthIn(max = 320.dp).combinedClickable(onClick = {}, onLongClick = onLongPress),
+            shape = shape,
+            color = bgColor,
+            shadowElevation = 0.dp
+        ) {
             if (isTypewriter && isNewChat) {
                 TypewriterText(text = content, modifier = Modifier.padding(12.dp), fontSize = fontSize.sp, color = textColor)
             } else {
@@ -430,8 +435,16 @@ fun MessageWithCodeBlocks(
     val textColor = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isUser) 16.dp else 4.dp, bottomEnd = if (isUser) 4.dp else 16.dp)
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalAlignment = arrangement) {
-        Surface(modifier = Modifier.widthIn(max = 350.dp).combinedClickable(onClick = {}, onLongClick = onLongPress), shape = shape, color = bgColor, shadowElevation = 0.dp) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalAlignment = arrangement
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 350.dp).combinedClickable(onClick = {}, onLongClick = onLongPress),
+            shape = shape,
+            color = bgColor,
+            shadowElevation = 0.dp
+        ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 val firstCodeIndex = content.indexOf("```")
                 if (firstCodeIndex > 0) {
