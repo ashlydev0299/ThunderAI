@@ -12,14 +12,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +81,7 @@ fun ChatScreen(
     BackHandler { onBack() }
 
     LaunchedEffect(Unit) {
+        viewModel.initDatabase(context)
         viewModel.checkConnectivity(context)
     }
 
@@ -99,7 +101,7 @@ fun ChatScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                         }
                     },
                     actions = {
@@ -176,7 +178,6 @@ fun ChatScreen(
                 Spacer(modifier = Modifier.height(80.dp))
             }
 
-            // Barra de escritura estilo DeepSeek (flota sobre el contenido)
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -238,7 +239,7 @@ fun ChatScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Outlined.Send,
+                                Icons.AutoMirrored.Filled.Send,
                                 stringResource(R.string.send),
                                 tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)

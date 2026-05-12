@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 enum class NavigationItem(val labelId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home(R.string.home, Icons.Outlined.Home),
-    NewChat(R.string.new_chat, Icons.AutoMirrored.Outlined.Chat),
+    NewChat(R.string.new_chat, Icons.AutoMirrored.Filled.Chat),
     History(R.string.chat_history, Icons.Outlined.History),
     Settings(R.string.settings, Icons.Outlined.Settings),
     About(R.string.about, Icons.Outlined.Info)

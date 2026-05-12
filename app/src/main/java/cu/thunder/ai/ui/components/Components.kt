@@ -284,7 +284,7 @@ fun ScaffoldWithTitle(
                     actions = {
                         actions()
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                         }
                     }
                 )
