@@ -437,7 +437,7 @@ fun MessageWithCodeBlocks(
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalAlignment = arrangement
+        horizontalAlignment = if (arrangement == Arrangement.End) Alignment.End else Alignment.Start
     ) {
         Surface(
             modifier = Modifier.widthIn(max = 350.dp).combinedClickable(onClick = {}, onLongClick = onLongPress),
