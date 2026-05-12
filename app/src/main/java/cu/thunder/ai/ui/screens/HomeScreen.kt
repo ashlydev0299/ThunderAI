@@ -17,14 +17,6 @@ import cu.thunder.ai.R
 import cu.thunder.ai.ui.components.PersianText
 import kotlinx.coroutines.launch
 
-enum class NavigationItem(val labelId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Home(R.string.home, Icons.Outlined.Home),
-    NewChat(R.string.new_chat, Icons.Outlined.Chat),
-    History(R.string.chat_history, Icons.Outlined.History),
-    Settings(R.string.settings, Icons.Outlined.Settings),
-    About(R.string.about, Icons.Outlined.Info)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -35,37 +27,53 @@ fun HomeScreen(
 ) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    var selectedItem by remember { mutableStateOf(NavigationItem.Home) }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    val navigateTo: (NavigationItem) -> Unit = { item ->
-        when (item) {
-            NavigationItem.NewChat -> onNavigateToChat()
-            NavigationItem.History -> onNavigateToHistory()
-            NavigationItem.Settings -> onNavigateToSettings()
-            NavigationItem.About -> onNavigateToAbout()
-            else -> {}
-        }
-    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
-                NavigationItem.entries.forEach { item ->
-                    NavigationDrawerItem(
-                        modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        icon = { Icon(item.icon, contentDescription = stringResource(item.labelId)) },
-                        label = { PersianText(stringResource(item.labelId)) },
-                        selected = selectedItem == item,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            selectedItem = item
-                            navigateTo(item)
-                        }
-                    )
-                }
+                NavigationDrawerItem(
+                    modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    icon = { Icon(Icons.Outlined.Chat, null) },
+                    label = { Text("Nuevo Chat") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToChat()
+                    }
+                )
+                NavigationDrawerItem(
+                    modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    icon = { Icon(Icons.Outlined.History, null) },
+                    label = { Text(stringResource(R.string.chat_history)) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToHistory()
+                    }
+                )
+                NavigationDrawerItem(
+                    modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    icon = { Icon(Icons.Outlined.Settings, null) },
+                    label = { Text(stringResource(R.string.settings)) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToSettings()
+                    }
+                )
+                NavigationDrawerItem(
+                    modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    icon = { Icon(Icons.Outlined.Info, null) },
+                    label = { Text(stringResource(R.string.about)) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToAbout()
+                    }
+                )
             }
         },
         content = {
@@ -75,54 +83,39 @@ fun HomeScreen(
                     Surface(shadowElevation = 8.dp) {
                         TopAppBar(
                             scrollBehavior = scrollBehavior,
-                            title = { PersianText(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
+                            title = { PersianText("ThunderAI", fontWeight = FontWeight.Bold) },
                             navigationIcon = {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Outlined.Menu, contentDescription = null)
+                                    Icon(Icons.Outlined.Menu, null)
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { navigateTo(NavigationItem.Settings) }) {
-                                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings))
+                                IconButton(onClick = onNavigateToSettings) {
+                                    Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
                                 }
-                                IconButton(onClick = { navigateTo(NavigationItem.About) }) {
-                                    Icon(Icons.Outlined.Info, contentDescription = stringResource(R.string.about))
+                                IconButton(onClick = onNavigateToAbout) {
+                                    Icon(Icons.Outlined.Info, stringResource(R.string.about))
                                 }
                             }
                         )
                     }
                 },
                 content = { paddingValues ->
-                    Surface(
-                        modifier = Modifier.padding(paddingValues).padding(16.dp)
-                    ) {
+                    Surface(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Button(
-                                onClick = { onNavigateToChat() },
+                                content = { PersianText(stringResource(R.string.chat_with_me)) },
+                                onClick = onNavigateToChat,
                                 modifier = Modifier.fillMaxWidth(0.6f)
-                            ) {
-                                PersianText(stringResource(R.string.chat_with_me))
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "\u26A1",
-                                fontSize = 64.sp
                             )
-                            Text(
-                                text = "ThunderAI",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Tu asistente de IA",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                            Spacer(modifier = Modifier.height(32.dp))
+                            Text("\u26A1", fontSize = 64.sp)
+                            Text("ThunderAI", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Tu asistente de IA", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         }
                     }
                 }
