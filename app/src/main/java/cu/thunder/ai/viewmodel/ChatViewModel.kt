@@ -60,11 +60,6 @@ class ChatViewModel : ViewModel() {
         val role: String
     )
 
-    private var lastTryTime = 0L
-    private var tryCount = 0
-    private val rateLimitTime = 3600
-    private val rateLimitTries = 10
-
     fun loadAllChats() {
         if (!isDbInitialized) return
         viewModelScope.launch {
@@ -100,11 +95,6 @@ class ChatViewModel : ViewModel() {
         if (!isDbInitialized) return
 
         viewModelScope.launch {
-            if (isLocallyRateLimited()) {
-                snackbarHost.showSnackbar("Has alcanzado el límite. Inténtalo en una hora.")
-                return@launch
-            }
-
             val userMsg = ChatMessage(content = content.trim(), role = "user")
             _currentMessages.value = _currentMessages.value + userMsg
 
@@ -195,21 +185,6 @@ class ChatViewModel : ViewModel() {
         val network = cm.activeNetwork
         val capabilities = cm.getNetworkCapabilities(network)
         _isOffline.value = capabilities == null || !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
-
-    private suspend fun isLocallyRateLimited(): Boolean {
-        val now = System.currentTimeMillis() / 1000
-        return if (tryCount > 0 && now - lastTryTime < rateLimitTime) {
-            if (tryCount < rateLimitTries) {
-                tryCount++
-                lastTryTime = now
-                false
-            } else true
-        } else {
-            tryCount = 1
-            lastTryTime = now
-            false
-        }
     }
 
     private fun buildHistory(): List<Pair<String, String>> {
