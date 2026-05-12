@@ -9,7 +9,6 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cu.thunder.ai.R
 import cu.thunder.ai.ui.components.PersianText
 import cu.thunder.ai.ui.components.PersianTextField
@@ -25,7 +25,6 @@ import cu.thunder.ai.ui.components.SettingsItem
 import cu.thunder.ai.ui.components.SettingsItemCard
 import cu.thunder.ai.utils.DataStoreHelper
 import kotlinx.coroutines.launch
-
 
 enum class ThemeSetting(val labelResId: Int) {
     System(R.string.theme_system),
@@ -84,20 +83,18 @@ fun SettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Perfil de usuario
+            // Perfil de usuario compacto
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(44.dp)
                                 .clip(CircleShape),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
@@ -105,23 +102,27 @@ fun SettingsScreen(
                                 Icon(
                                     Icons.Outlined.Person,
                                     contentDescription = null,
-                                    modifier = Modifier.size(40.dp),
+                                    modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        PersianText(
-                            text = userName,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TextButton(onClick = {
-                            tempName = userName
-                            showNameDialog = true
-                        }) {
-                            PersianText("Cambiar nombre", color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            PersianText(
+                                text = userName,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            TextButton(
+                                onClick = {
+                                    tempName = userName
+                                    showNameDialog = true
+                                },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                PersianText("Cambiar nombre", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                 }

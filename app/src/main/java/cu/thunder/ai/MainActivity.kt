@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -30,17 +30,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
 
-            var isDarkMode by remember { mutableStateOf(false) }
+            var isDarkMode by remember { mutableStateOf<Boolean?>(null) }
 
             LaunchedEffect(Unit) {
-                DataStoreHelper.getDarkMode(context).collect { dark ->
+                DataStoreHelper.getDarkMode(context).first().let { dark ->
                     isDarkMode = dark
                 }
             }
 
+            if (isDarkMode == null) {
+                Box(modifier = Modifier.fillMaxSize())
+                return@setContent
+            }
+
             val chatViewModel = remember { ChatViewModel() }
 
-            ThunderAITheme(darkTheme = isDarkMode) {
+            ThunderAITheme(darkTheme = isDarkMode!!) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
 
@@ -89,7 +94,7 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.SETTINGS) {
                             val scope = rememberCoroutineScope()
                             SettingsScreen(
-                                isDarkMode = isDarkMode,
+                                isDarkMode = isDarkMode!!,
                                 onThemeChanged = { dark ->
                                     isDarkMode = dark
                                     scope.launch {

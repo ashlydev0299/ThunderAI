@@ -58,7 +58,6 @@ fun ChatScreen(
     val messages by viewModel.currentMessages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isOffline by viewModel.isOffline.collectAsState()
-    val chatTitle by viewModel.currentChatTitle.collectAsState()
     val inputEnabled by viewModel.inputEnabled.collectAsState()
 
     val context = LocalContext.current
@@ -66,11 +65,12 @@ fun ChatScreen(
     val listState = rememberScrollState()
 
     var chatInput by remember { mutableStateOf("") }
-    var userName by remember { mutableStateOf("Usuario") }
+    var userName by remember { mutableStateOf<String?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        DataStoreHelper.getUserName(context).collect { name ->
-            if (name != null) userName = name
+        DataStoreHelper.getUserName(context).first().let { name ->
+            userName = name ?: "Usuario"
         }
     }
 
@@ -94,27 +94,22 @@ fun ChatScreen(
             Surface(shadowElevation = 8.dp) {
                 TopAppBar(
                     title = {
-                        AnimatedContent(targetState = chatTitle) { title ->
-                            PersianText(
-                                text = title.ifEmpty { "ThunderAI" },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            text = "ThunderAI",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
                     },
                     navigationIcon = {
-                        if (chatId != -1L) {
-                            IconButton(onClick = {
-                                viewModel.newChat()
-                            }) {
-                                Icon(Icons.Outlined.ArrowBack, "Nuevo chat")
-                            }
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Outlined.Menu, "Menú")
                         }
                     },
                     actions = {
-                        IconButton(onClick = onNavigateToHistory) {
-                            Icon(Icons.Outlined.History, "Historial")
+                        IconButton(onClick = { viewModel.newChat() }) {
+                            Icon(Icons.Outlined.Add, "Nuevo chat")
                         }
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
@@ -176,7 +171,7 @@ fun ChatScreen(
                             Text("\u26A1", fontSize = MaterialTheme.typography.displayMedium.fontSize)
                             Spacer(modifier = Modifier.height(16.dp))
                             PersianText(
-                                text = "Hola, $userName",
+                                text = "Hola, ${userName ?: "Usuario"}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = MaterialTheme.typography.headlineSmall.fontSize
                             )
@@ -296,6 +291,45 @@ fun ChatScreen(
                         }
                     }
                 }
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { PersianText("Nuevo Chat") },
+                    onClick = {
+                        showMenu = false
+                        viewModel.newChat()
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.Chat, null) }
+                )
+                DropdownMenuItem(
+                    text = { PersianText(stringResource(R.string.chat_history)) },
+                    onClick = {
+                        showMenu = false
+                        onNavigateToHistory()
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.History, null) }
+                )
+                DropdownMenuItem(
+                    text = { PersianText(stringResource(R.string.settings)) },
+                    onClick = {
+                        showMenu = false
+                        onNavigateToSettings()
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.Settings, null) }
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { PersianText(stringResource(R.string.about)) },
+                    onClick = {
+                        showMenu = false
+                        onNavigateToSettings()
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.Info, null) }
+                )
             }
         }
     }
