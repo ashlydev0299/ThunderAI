@@ -85,8 +85,9 @@ class MainActivity : ComponentActivity() {
                                 isDarkMode = isDarkMode,
                                 onThemeChanged = { dark ->
                                     isDarkMode = dark
-                                    kotlinx.coroutines.MainScope().launch {
-                                        DataStoreHelper.saveDarkMode(context, dark)
+                                    kotlinx.coroutines.GlobalScope.launch {
+    DataStoreHelper.saveDarkMode(context, dark)
+}
                                     }
                                 },
                                 onBack = { navController.popBackStack() }

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +25,7 @@ import cu.thunder.ai.ui.components.SettingsItem
 import cu.thunder.ai.ui.components.SettingsItemCard
 import cu.thunder.ai.utils.DataStoreHelper
 import kotlinx.coroutines.launch
+
 
 enum class ThemeSetting(val labelResId: Int) {
     System(R.string.theme_system),
@@ -111,7 +113,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         PersianText(
                             text = userName,
-                            fontSize = androidx.compose.ui.unit.sp.TextUnit(18f, androidx.compose.ui.unit.TextUnitType.Sp),
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
