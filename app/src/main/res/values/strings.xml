@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">ThunderAI</string>
+    <string name="theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="new_chat">New Chat</string>
+    <string name="chat_history">Chat History</string>
+    <string name="history_title">History Title</string>
+    <string name="title">Title</string>
+    <string name="date">Date</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="delete_confirm">Are you sure you want to delete this item?</string>
+    <string name="accept">Accept</string>
+    <string name="cancel">Cancel</string>
+    <string name="home">Home</string>
+    <string name="about">About</string>
+    <string name="chat_with_me">Chat with me</string>
+    <string name="chat_input">Message</string>
+    <string name="clear">Clear</string>
+    <string name="send">Send</string>
+    <string name="text_copied">Text copied.</string>
+    <string name="no_internet_connection">No internet connection.</string>
+    <string name="ai_failed_answering">AI failed to answer.</string>
+    <string name="ai_was_cancelled">AI was cancelled.</string>
+    <string name="ai_rate_limited">Server busy, try again later.</string>
+    <string name="locally_rate_limited">You are rate limited.</string>
+    <string name="language">Language</string>
+    <string name="api_model">AI Model</string>
+    <string name="suggested_model_for_chat">Suggested models for chat:</string>
+    <string name="change_it_to_default">Change to default</string>
+    <string name="model_not_supported">Model not supported.</string>
+    <string name="github_source" translatable="false">https://github.com/ashlydev0299/ThunderAI</string>
+    <string name="license_link" translatable="false">https://www.gnu.org/licenses/gpl-3.0.html</string>
+    <string name="license_header">Licensed under GNU GPLv3.</string>
+    <string name="about_app">AI Chat Assistant for Android with Kotlin and Jetpack Compose</string>
+</resources>

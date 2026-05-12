@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">ThunderAI</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="settings">Ajustes</string>
+    <string name="back">Volver</string>
+    <string name="new_chat">Nuevo Chat</string>
+    <string name="chat_history">Historial</string>
+    <string name="history_title">Título</string>
+    <string name="title">Título</string>
+    <string name="date">Fecha</string>
+    <string name="edit">Editar</string>
+    <string name="delete">Eliminar</string>
+    <string name="yes">Sí</string>
+    <string name="no">No</string>
+    <string name="delete_confirm">¿Eliminar este elemento?</string>
+    <string name="accept">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="home">Inicio</string>
+    <string name="about">Acerca de</string>
+    <string name="chat_with_me">Chatear conmigo</string>
+    <string name="chat_input">Mensaje</string>
+    <string name="clear">Limpiar</string>
+    <string name="send">Enviar</string>
+    <string name="text_copied">Texto copiado.</string>
+    <string name="no_internet_connection">Sin conexión a internet.</string>
+    <string name="ai_failed_answering">La IA no pudo responder.</string>
+    <string name="ai_was_cancelled">Respuesta cancelada.</string>
+    <string name="ai_rate_limited">Servidor ocupado.</string>
+    <string name="locally_rate_limited">Límite alcanzado.</string>
+    <string name="language">Idioma</string>
+    <string name="api_model">Modelo IA</string>
+    <string name="suggested_model_for_chat">Modelos sugeridos:</string>
+    <string name="change_it_to_default">Usar predeterminado</string>
+    <string name="model_not_supported">Modelo no soportado.</string>
+    <string name="github_source" translatable="false">https://github.com/ashlydev0299/ThunderAI</string>
+    <string name="license_link" translatable="false">https://www.gnu.org/licenses/gpl-3.0.html</string>
+    <string name="license_header">Licenciado bajo GNU GPLv3.</string>
+    <string name="about_app">Asistente de IA para Android con Kotlin y Jetpack Compose</string>
+</resources>
