@@ -42,7 +42,7 @@ fun HistoryScreen(
                     title = { PersianText(stringResource(R.string.chat_history), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
                         }
                     }
                 )

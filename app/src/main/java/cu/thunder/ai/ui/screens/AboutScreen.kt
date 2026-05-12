@@ -31,7 +31,7 @@ fun AboutScreen(onBack: () -> Unit) {
                     title = { PersianText(stringResource(R.string.about), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
                         }
                     }
                 )

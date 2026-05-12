@@ -23,9 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-/**
- * Texto que se escribe letra por letra (efecto máquina de escribir).
- */
 @Composable
 fun TypewriterText(
     text: String,
@@ -78,9 +75,6 @@ fun TypewriterText(
     )
 }
 
-/**
- * Tres puntos animados que rebotan (indicador de espera).
- */
 @Composable
 fun AnimatedDots() {
     val dots = listOf(
@@ -98,9 +92,9 @@ fun AnimatedDots() {
                     repeatMode = RepeatMode.Restart,
                     animation = keyframes {
                         durationMillis = 1000
-                        0.0f at 0 with LinearOutSlowInEasing
-                        1.0f at 200 with LinearOutSlowInEasing
-                        0.0f at 400 with LinearOutSlowInEasing
+                        0.0f at 0 using LinearOutSlowInEasing
+                        1.0f at 200 using LinearOutSlowInEasing
+                        0.0f at 400 using LinearOutSlowInEasing
                         0.0f at 1000
                     }
                 )

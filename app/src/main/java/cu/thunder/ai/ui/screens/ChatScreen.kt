@@ -12,6 +12,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +37,6 @@ import cu.thunder.ai.R
 import cu.thunder.ai.ui.animation.AnimatedDots
 import cu.thunder.ai.ui.animation.TypewriterText
 import cu.thunder.ai.ui.components.PersianText
-import cu.thunder.ai.ui.components.PersianTextField
 import cu.thunder.ai.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -98,7 +99,7 @@ fun ChatScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Volver")
                         }
                     },
                     actions = {
@@ -117,18 +118,101 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
             }
-        },
-        bottomBar = {
-            Crossfade(targetState = inputEnabled) { enabled ->
-                if (enabled) {
-                    Surface(shadowElevation = 8.dp) {
-                        PersianTextField(
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(listState)
+            ) {
+                AnimatedVisibility(
+                    visible = isOffline,
+                    enter = slideInVertically() + fadeIn(),
+                    exit = slideOutVertically() + fadeOut()
+                ) {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.WifiOff, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            PersianText(
+                                text = stringResource(R.string.no_internet_connection),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+
+                messages.forEach { msg ->
+                    ChatBubbleItem(
+                        content = msg.content,
+                        owner = ChatBubbleOwner.of(msg.role),
+                        isTypewriter = chatId == -1L && msg.role == "assistant",
+                        isNewChat = chatId == -1L
+                    )
+                }
+
+                if (isLoading) {
+                    ChatBubbleBox(
+                        owner = ChatBubbleOwner.Assistant,
+                        onClick = {},
+                        onLongClick = {},
+                        content = {
+                            Box(modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)) {
+                                AnimatedDots()
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(80.dp))
+            }
+
+            // Barra de escritura estilo DeepSeek (flota sobre el contenido)
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(28.dp),
+                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (inputEnabled) {
+                        OutlinedTextField(
                             value = chatInput,
                             onValueChange = { chatInput = it },
-                            placeholder = { PersianText(stringResource(R.string.chat_input)) },
-                            minLines = 1,
-                            maxLines = 5,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                            modifier = Modifier.weight(1f),
+                            placeholder = { PersianText(stringResource(R.string.chat_input), style = MaterialTheme.typography.bodyMedium) },
+                            maxLines = 4,
+                            enabled = !isLoading,
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                disabledBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None,
+                                keyboardType = KeyboardType.Text,
+                                capitalization = KeyboardCapitalization.Sentences
+                            ),
                             keyboardActions = KeyboardActions(onSend = {
                                 if (chatInput.isNotBlank()) {
                                     scope.launch {
@@ -136,88 +220,46 @@ fun ChatScreen(
                                         chatInput = ""
                                     }
                                 }
-                            }),
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None,
-                                keyboardType = KeyboardType.Text,
-                                capitalization = KeyboardCapitalization.Sentences
-                            ),
-                            leadingIcon = {
-                                IconButton(onClick = { chatInput = "" }) {
-                                    Icon(Icons.Outlined.Clear, stringResource(R.string.clear))
+                            })
+                        )
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        IconButton(
+                            onClick = {
+                                if (chatInput.isNotBlank()) {
+                                    scope.launch {
+                                        viewModel.sendMessage(chatInput.trim())
+                                        chatInput = ""
+                                    }
                                 }
                             },
-                            trailingIcon = {
-                                IconButton(
-                                    enabled = chatInput.isNotBlank(),
-                                    onClick = {
-                                        scope.launch {
-                                            viewModel.sendMessage(chatInput.trim())
-                                            chatInput = ""
-                                        }
-                                    }
-                                ) {
-                                    Icon(Icons.Outlined.Send, stringResource(R.string.send))
-                                }
-                            }
-                        )
-                    }
-                } else {
-                    BottomAppBar(
-                        actions = { },
-                        floatingActionButton = {
-                            FloatingActionButton(onClick = { viewModel.cancelRequest() }) {
-                                Icon(Icons.Outlined.Stop, stringResource(R.string.cancel))
+                            enabled = chatInput.isNotBlank() && !isLoading,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Send,
+                                stringResource(R.string.send),
+                                tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            FloatingActionButton(
+                                onClick = { viewModel.cancelRequest() },
+                                containerColor = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Outlined.Stop, stringResource(R.string.cancel), modifier = Modifier.size(20.dp))
                             }
                         }
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(listState)
-        ) {
-            AnimatedVisibility(
-                visible = isOffline,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                Surface(color = MaterialTheme.colorScheme.errorContainer) {
-                    PersianText(
-                        text = stringResource(R.string.no_internet_connection),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp).fillMaxWidth()
-                    )
-                }
-            }
-
-            messages.forEach { msg ->
-                ChatBubbleItem(
-                    content = msg.content,
-                    owner = ChatBubbleOwner.of(msg.role),
-                    isTypewriter = chatId == -1L && msg.role == "assistant",
-                    isNewChat = chatId == -1L
-                )
-            }
-
-            if (isLoading) {
-                ChatBubbleBox(
-                    owner = ChatBubbleOwner.Assistant,
-                    onClick = {},
-                    onLongClick = {},
-                    content = {
-                        Box(modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)) {
-                            AnimatedDots()
-                        }
                     }
-                )
+                }
             }
-
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
