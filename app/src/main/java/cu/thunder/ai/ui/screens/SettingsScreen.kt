@@ -97,7 +97,7 @@ fun SettingsScreen(
                     }
                     if (selectedTheme == ThemeSetting.System && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         PersianText(
-                            text = stringResource(R.string.dynamic_theme_notice),
+                            text = "On Android 12+ your app theme colors are based on your home screen background",
                             textAlign = TextAlign.Justify,
                             modifier = Modifier.fillMaxWidth()
                         )

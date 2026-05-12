@@ -71,11 +71,7 @@ fun HistoryScreen(
                         chat = chat,
                         onClick = { onChatSelected(chat.id) },
                         onEdit = { newTitle ->
-                            viewModel.viewModelScope.launch {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    viewModel.renameChat(chat.id, newTitle)
-                                }
-                            }
+                            viewModel.renameChat(chat.id, newTitle)
                         },
                         onDelete = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -156,7 +152,6 @@ fun HistoryItem(
         }
     }
 
-    // Diálogo de eliminación
     if (isDeleting) {
         AlertDialog(
             onDismissRequest = { isDeleting = false },
@@ -174,7 +169,6 @@ fun HistoryItem(
         )
     }
 
-    // Diálogo de edición
     if (isEditing) {
         var newTitle by remember { mutableStateOf(chat.title) }
         AlertDialog(

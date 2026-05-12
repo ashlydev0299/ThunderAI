@@ -18,12 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.*
 
 class ChatViewModel : ViewModel() {
 
-    // Base de datos
     private lateinit var chatDao: ChatDao
     private var isDbInitialized = false
 
@@ -35,11 +32,9 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    // Todos los chats
     private val _allChats = MutableStateFlow<List<ChatEntity>>(emptyList())
     val allChats: StateFlow<List<ChatEntity>> = _allChats
 
-    // Chat actual
     private val _currentChatId = mutableStateOf(-1L)
     private val _currentMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val currentMessages: StateFlow<List<ChatMessage>> = _currentMessages
@@ -60,13 +55,11 @@ class ChatViewModel : ViewModel() {
 
     private var chatJob: Job? = null
 
-    // Modelo de datos para mensajes
     data class ChatMessage(
         val content: String,
         val role: String
     )
 
-    // Rate limiting
     private var lastTryTime = 0L
     private var tryCount = 0
     private val rateLimitTime = 3600
@@ -112,11 +105,9 @@ class ChatViewModel : ViewModel() {
                 return@launch
             }
 
-            // Agregar mensaje del usuario
             val userMsg = ChatMessage(content = content.trim(), role = "user")
             _currentMessages.value = _currentMessages.value + userMsg
 
-            // Crear chat si es nuevo
             var chatId = _currentChatId.value
             if (chatId == -1L) {
                 val title = if (content.length > 30) content.take(30) + "..." else content
@@ -128,13 +119,11 @@ class ChatViewModel : ViewModel() {
                 loadAllChats()
             }
 
-            // Guardar en BD
             chatDao.insertMessage(
                 ChatMessageEntity(chatId = chatId, role = "user", content = content.trim())
             )
             chatDao.updateChatLastMessage(chatId, content.trim())
 
-            // Preparar solicitud
             _isLoading.value = true
             _inputEnabled.value = false
 
@@ -154,8 +143,7 @@ class ChatViewModel : ViewModel() {
                             chatDao.updateChatLastMessage(chatId, response)
                             loadAllChats()
 
-                            // Predecir título
-                            if (_currentMessages.value.size > 2 && _currentChatTitle.value.startsWith(_currentMessages.value.first().content.take(20))) {
+                            if (_currentMessages.value.size > 2) {
                                 predictAndUpdateTitle(chatId)
                             }
                         }
@@ -178,6 +166,14 @@ class ChatViewModel : ViewModel() {
         chatJob?.cancel()
         _isLoading.value = false
         _inputEnabled.value = true
+    }
+
+    fun renameChat(chatId: Long, newTitle: String) {
+        if (!isDbInitialized) return
+        viewModelScope.launch {
+            chatDao.updateChatTitle(chatId, newTitle)
+            loadAllChats()
+        }
     }
 
     fun deleteChat(chatId: Long) {
