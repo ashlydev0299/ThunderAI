@@ -1,15 +1,20 @@
 package cu.thunder.ai
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,9 +28,21 @@ import cu.thunder.ai.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or not, app continues */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Solicitar permiso de notificaciones en Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         setContent {
             val context = LocalContext.current
@@ -33,10 +50,10 @@ class MainActivity : ComponentActivity() {
             var isDarkMode by remember { mutableStateOf<Boolean?>(null) }
 
             LaunchedEffect(Unit) {
-    DataStoreHelper.getDarkMode(context).collect { dark ->
-        isDarkMode = dark
-    }
-}
+                DataStoreHelper.getDarkMode(context).collect { dark ->
+                    isDarkMode = dark
+                }
+            }
 
             if (isDarkMode == null) {
                 Box(modifier = Modifier.fillMaxSize())
@@ -62,7 +79,8 @@ class MainActivity : ComponentActivity() {
                                 chatId = -1L,
                                 viewModel = chatViewModel,
                                 onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
-                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) }
+                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                                onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) }
                             )
                         }
 
@@ -87,7 +105,8 @@ class MainActivity : ComponentActivity() {
                                 chatId = chatId,
                                 viewModel = chatViewModel,
                                 onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
-                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) }
+                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                                onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) }
                             )
                         }
 

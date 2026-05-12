@@ -1,10 +1,15 @@
 package cu.thunder.ai.viewmodel
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cu.thunder.ai.data.local.ChatDao
@@ -23,12 +28,15 @@ class ChatViewModel : ViewModel() {
 
     private lateinit var chatDao: ChatDao
     private var isDbInitialized = false
+    private var appContext: Context? = null
 
     fun initDatabase(context: Context) {
+        appContext = context
         if (!isDbInitialized) {
             chatDao = AppDatabase.getDatabase(context).chatDao()
             isDbInitialized = true
             loadAllChats()
+            createNotificationChannel(context)
         }
     }
 
@@ -59,6 +67,37 @@ class ChatViewModel : ViewModel() {
         val content: String,
         val role: String
     )
+
+    private fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "thunderai_responses",
+                "Respuestas de ThunderAI",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notificaciones cuando la IA termina de responder"
+            }
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showResponseNotification(response: String) {
+        val context = appContext ?: return
+        val shortPreview = if (response.length > 100) response.take(100) + "..." else response
+
+        val notification = NotificationCompat.Builder(context, "thunderai_responses")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("ThunderAI respondió")
+            .setContentText(shortPreview)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(response))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
+    }
 
     fun loadAllChats() {
         if (!isDbInitialized) return
@@ -137,9 +176,12 @@ class ChatViewModel : ViewModel() {
                                 predictAndUpdateTitle(chatId)
                             }
                         }
+
+                        // Notificación al terminar respuesta
+                        showResponseNotification(response)
                     }.onFailure { error ->
                         val errorMsg = ChatMessage(
-                            content = "Error: ${error.message ?: "Falló la conexión"}",
+                            content = "Lo siento ${userName ? no pude generar una respuesta , si el problema persiste contacte con el soporte."Falló la conexión"}",
                             role = "assistant"
                         )
                         _currentMessages.value = _currentMessages.value + errorMsg
@@ -156,6 +198,17 @@ class ChatViewModel : ViewModel() {
         chatJob?.cancel()
         _isLoading.value = false
         _inputEnabled.value = true
+    }
+
+    fun regenerate() {
+        val msgs = _currentMessages.value
+        if (msgs.isEmpty()) return
+        val lastUserMsg = msgs.findLast { it.role == "user" } ?: return
+        sendMessage(lastUserMsg.content)
+    }
+
+    fun startVoiceInput(context: Context) {
+        Toast.makeText(context, "Reconocimiento de voz próximamente", Toast.LENGTH_SHORT).show()
     }
 
     fun renameChat(chatId: Long, newTitle: String) {
