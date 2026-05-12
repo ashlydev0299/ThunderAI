@@ -230,33 +230,37 @@ fun ChatBubbleItem(
     isNewChat: Boolean
 ) {
     var isExpanded by remember { mutableStateOf(true) }
-    val haptic = LocalHapticFeedback.current
-    val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
+val haptic = LocalHapticFeedback.current
+val clipboardManager = LocalClipboardManager.current
+val context = LocalContext.current
+val copiedText = stringResource(R.string.text_copied) // ✅ obtener aquí
 
-    ChatBubbleBox(
-        owner = owner,
-        onClick = { isExpanded = !isExpanded },
-        onLongClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            clipboardManager.setText(AnnotatedString(content))
-            Toast.makeText(context, stringResource(R.string.text_copied), Toast.LENGTH_SHORT).show()
-        },
-        content = {
-            if (isTypewriter && isNewChat) {
-                TypewriterText(
-                    modifier = Modifier.padding(8.dp),
-                    text = content.trim(),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 10
-                )
-            } else {
-                PersianText(
-                    modifier = Modifier.padding(8.dp),
-                    text = content.trim(),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 10
-                )
+ChatBubbleBox(
+    owner = owner,
+    onClick = { isExpanded = !isExpanded },
+    onLongClick = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        clipboardManager.setText(AnnotatedString(content))
+        Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show() // ✅ usar variable
+    },
+    content = {
+        if (isTypewriter && isNewChat) {
+            TypewriterText(
+                modifier = Modifier.padding(8.dp),
+                text = content.trim(),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 10
+            )
+        } else {
+            PersianText(
+                modifier = Modifier.padding(8.dp),
+                text = content.trim(),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 10
+            )
+        }
+    }
+)
             }
         }
     )
