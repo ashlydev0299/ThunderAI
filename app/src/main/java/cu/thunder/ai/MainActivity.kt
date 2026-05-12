@@ -33,10 +33,10 @@ class MainActivity : ComponentActivity() {
             var isDarkMode by remember { mutableStateOf<Boolean?>(null) }
 
             LaunchedEffect(Unit) {
-                DataStoreHelper.getDarkMode(context).first().let { dark ->
-                    isDarkMode = dark
-                }
-            }
+    DataStoreHelper.getDarkMode(context).collect { dark ->
+        isDarkMode = dark
+    }
+}
 
             if (isDarkMode == null) {
                 Box(modifier = Modifier.fillMaxSize())

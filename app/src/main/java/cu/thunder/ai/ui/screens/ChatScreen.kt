@@ -69,9 +69,9 @@ fun ChatScreen(
     var showMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        DataStoreHelper.getUserName(context).first().let { name ->
-            userName = name ?: "Usuario"
-        }
+        DataStoreHelper.getUserName(context).collect { name ->
+    userName = name ?: "Usuario"
+}
     }
 
     LaunchedEffect(chatId) {
