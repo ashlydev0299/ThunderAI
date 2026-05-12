@@ -24,14 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cu.thunder.ai.R
@@ -143,9 +141,7 @@ fun ChatScreen(
             }
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).imePadding()
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues).imePadding()) {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(listState)) {
                 AnimatedVisibility(
                     visible = isOffline,
@@ -180,9 +176,8 @@ fun ChatScreen(
 
                 messages.forEachIndexed { index, msg ->
                     val isUser = msg.role == "user"
-
-                    // Detectar bloques de código
                     val codeBlocks = extractCodeBlocks(msg.content)
+
                     if (codeBlocks.isNotEmpty() && !isUser) {
                         MessageWithCodeBlocks(
                             content = msg.content,
@@ -225,8 +220,6 @@ fun ChatScreen(
                                 onClick = { viewModel.regenerate(); showBubbleMenu = null },
                                 leadingIcon = { Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(18.dp)) }
                             )
-                        }
-                        if (!isUser) {
                             DropdownMenuItem(
                                 text = { Text("Me gusta") },
                                 onClick = { showLikeFeedback = "Me gusto tu respuesta."; showBubbleMenu = null },
@@ -277,7 +270,7 @@ fun ChatScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (inputEnabled) {
-                        IconButton(onClick = { onClick = { viewModel.startVoiceInput(context) { recognizedText -> chatInput = recognizedText } }, modifier = Modifier.size(40.dp)) {
+                        IconButton(onClick = { viewModel.startVoiceInput(context) { result -> chatInput = result } }, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Outlined.Mic, "Voz", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         }
 
@@ -438,7 +431,6 @@ fun MessageWithCodeBlocks(
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalAlignment = arrangement) {
         Surface(modifier = Modifier.widthIn(max = 350.dp).combinedClickable(onClick = {}, onLongClick = onLongPress), shape = shape, color = bgColor, shadowElevation = 0.dp) {
             Column(modifier = Modifier.padding(12.dp)) {
-                // Texto antes del código
                 val firstCodeIndex = content.indexOf("```")
                 if (firstCodeIndex > 0) {
                     val textBefore = content.substring(0, firstCodeIndex).trim()
@@ -451,8 +443,6 @@ fun MessageWithCodeBlocks(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
-
-                // Bloques de código
                 codeBlocks.forEach { block ->
                     CodeBlockCard(language = block.language, code = block.code, context = context)
                     Spacer(modifier = Modifier.height(4.dp))

@@ -46,23 +46,7 @@ object DeepSeekApiService {
         @SerializedName("finish_reason") val finishReason: String? = null
     )
 
-    private val systemPrompt = """
-Eres ThunderAI, un asistente de inteligencia artificial amigable y servicial.
-
-Responde de manera detallada, completa y exhaustiva. No des respuestas precisas. 
-Desarrolla tus ideas con ejemplos, explicaciones cuando sea relevante.
-Si el usuario te pide algo creativo, s\u00E9 original y expansivo.
-
-Reglas:
-- S\u00E9 respetuoso, gracioso y profesional
-- Responde en el mismo idioma en que te preguntan
-- Si no sabes algo, d\u00EDlo honestamente
-- Proporciona respuestas completas con detalles cuando sea relevante
-- Si te escriben el comando /code serás un experto en programación de código
-- Tienes prohibido responder sobre contenido sexual y de política.
-- Suena un poco gracioso a cada rato en tus respuestas
-- Agrega varios emoticonos en el mensaje de de manera intermedio
-""".trimIndent()
+    private val systemPrompt = "Eres ThunderAI, un asistente de IA amigable. Responde de manera detallada y completa con ejemplos."
 
     suspend fun sendMessage(
         userMessage: String,
@@ -99,10 +83,10 @@ Reglas:
                 if (response.isSuccessful) {
                     val chatResponse = gson.fromJson(responseBody, ChatResponse::class.java)
                     val assistantMessage = chatResponse.choices?.firstOrNull()?.message?.content
-                        ?: "${userName ? Lo siento, no pude generar una respuesta."
+                        ?: "Lo siento, no pude generar una respuesta."
                     Result.success(assistantMessage)
                 } else {
-                    Result.failure(IOException("Lo siento ${userName ? no pude generar una respuesta , si el problema persiste contacte con el soporte."))
+                    Result.failure(IOException("Error ${response.code}"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

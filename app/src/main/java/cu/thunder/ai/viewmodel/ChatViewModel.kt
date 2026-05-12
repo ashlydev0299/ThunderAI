@@ -140,17 +140,13 @@ class ChatViewModel : ViewModel() {
             var chatId = _currentChatId.value
             if (chatId == -1L) {
                 val title = if (content.length > 30) content.take(30) + "..." else content
-                chatId = chatDao.insertChat(
-                    ChatEntity(title = title, lastMessage = content, timestamp = System.currentTimeMillis())
-                )
+                chatId = chatDao.insertChat(ChatEntity(title = title, lastMessage = content, timestamp = System.currentTimeMillis()))
                 _currentChatId.value = chatId
                 _currentChatTitle.value = title
                 loadAllChats()
             }
 
-            chatDao.insertMessage(
-                ChatMessageEntity(chatId = chatId, role = "user", content = content.trim())
-            )
+            chatDao.insertMessage(ChatMessageEntity(chatId = chatId, role = "user", content = content.trim()))
             chatDao.updateChatLastMessage(chatId, content.trim())
 
             _isLoading.value = true
@@ -166,26 +162,19 @@ class ChatViewModel : ViewModel() {
                         _currentMessages.value = _currentMessages.value + assistantMsg
 
                         launch {
-                            chatDao.insertMessage(
-                                ChatMessageEntity(chatId = chatId, role = "assistant", content = response)
-                            )
+                            chatDao.insertMessage(ChatMessageEntity(chatId = chatId, role = "assistant", content = response))
                             chatDao.updateChatLastMessage(chatId, response)
                             loadAllChats()
-
-                            if (_currentMessages.value.size > 2) {
-                                predictAndUpdateTitle(chatId)
-                            }
+                            if (_currentMessages.value.size > 2) predictAndUpdateTitle(chatId)
                         }
-
                         showResponseNotification(response)
                     }.onFailure { error ->
                         val errorMsg = ChatMessage(
-                            content = "Lo siento ${userName ? no pude generar una respuesta , si el problema persiste contacte con el soporte."Falló la conexión"}",
-                            role = "assistant"
-                        )
+    content = "Lo siento, no se pudo generar una respuesta. Si el problema persiste, contacte con el soporte.",
+    role = "assistant"
+)
                         _currentMessages.value = _currentMessages.value + errorMsg
                     }
-
                     _isLoading.value = false
                     _inputEnabled.value = true
                 }
@@ -208,9 +197,7 @@ class ChatViewModel : ViewModel() {
 
     fun startVoiceInput(context: Context, onResult: (String) -> Unit) {
         try {
-            (context as? cu.thunder.ai.MainActivity)?.startVoiceRecognition { text ->
-                onResult(text)
-            }
+            (context as? cu.thunder.ai.MainActivity)?.startVoiceRecognition { text -> onResult(text) }
         } catch (e: Exception) {
             Toast.makeText(context, "Reconocimiento de voz no disponible", Toast.LENGTH_SHORT).show()
         }
@@ -231,9 +218,7 @@ class ChatViewModel : ViewModel() {
             if (chat != null) {
                 chatDao.deleteChat(chat)
                 loadAllChats()
-                if (_currentChatId.value == chatId) {
-                    newChat()
-                }
+                if (_currentChatId.value == chatId) newChat()
             }
         }
     }
