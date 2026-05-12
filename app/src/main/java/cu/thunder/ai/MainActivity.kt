@@ -9,14 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavType
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import cu.thunder.ai.navigation.NavRoutes
 import cu.thunder.ai.ui.screens.*
 import cu.thunder.ai.ui.theme.ThunderAITheme
+import cu.thunder.ai.utils.DataStoreHelper
 import cu.thunder.ai.viewmodel.ChatViewModel
 
 class MainActivity : ComponentActivity() {
@@ -25,7 +25,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+            val context = LocalContext.current
+
             var isDarkMode by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                DataStoreHelper.getDarkMode(context).collect { dark ->
+                    isDarkMode = dark
+                }
+            }
+
             val chatViewModel = remember { ChatViewModel() }
 
             ThunderAITheme(darkTheme = isDarkMode) {
@@ -34,30 +43,17 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = NavRoutes.HOME,
+                        startDestination = NavRoutes.CHAT_MAIN,
                         enterTransition = { fadeIn() + slideInHorizontally(initialOffsetX = { it / 4 }) },
                         exitTransition = { fadeOut() + slideOutHorizontally(targetOffsetX = { -it / 4 }) },
                         popEnterTransition = { fadeIn() + slideInHorizontally(initialOffsetX = { -it / 4 }) },
                         popExitTransition = { fadeOut() + slideOutHorizontally(targetOffsetX = { it / 4 }) }
                     ) {
-                        composable(NavRoutes.HOME) {
-                            HomeScreen(
-                                onNavigateToChat = { navController.navigate(NavRoutes.chat(-1L)) },
-                                onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
-                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
-                                onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) }
-                            )
-                        }
-
-                        composable(
-                            route = NavRoutes.CHAT,
-                            arguments = listOf(navArgument("chatId") { type = NavType.LongType })
-                        ) { backStackEntry ->
-                            val chatId = backStackEntry.arguments?.getLong("chatId") ?: -1L
+                        composable(NavRoutes.CHAT_MAIN) {
                             ChatScreen(
-                                chatId = chatId,
+                                chatId = -1L,
                                 viewModel = chatViewModel,
-                                onBack = { navController.popBackStack() },
+                                onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
                                 onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) }
                             )
                         }
@@ -68,16 +64,31 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() },
                                 onChatSelected = { chatId ->
                                     navController.navigate(NavRoutes.chat(chatId)) {
-                                        popUpTo(NavRoutes.HOME)
+                                        popUpTo(NavRoutes.CHAT_MAIN)
                                     }
                                 }
+                            )
+                        }
+
+                        composable(NavRoutes.CHAT) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getString("chatId")?.toLongOrNull() ?: -1L
+                            ChatScreen(
+                                chatId = chatId,
+                                viewModel = chatViewModel,
+                                onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
+                                onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) }
                             )
                         }
 
                         composable(NavRoutes.SETTINGS) {
                             SettingsScreen(
                                 isDarkMode = isDarkMode,
-                                onThemeChanged = { isDarkMode = it },
+                                onThemeChanged = { dark ->
+                                    isDarkMode = dark
+                                    kotlinx.coroutines.MainScope().launch {
+                                        DataStoreHelper.saveDarkMode(context, dark)
+                                    }
+                                },
                                 onBack = { navController.popBackStack() }
                             )
                         }

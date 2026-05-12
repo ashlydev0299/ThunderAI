@@ -3,12 +3,14 @@ package cu.thunder.ai.ui.screens
 import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -16,9 +18,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cu.thunder.ai.R
 import cu.thunder.ai.ui.components.PersianText
+import cu.thunder.ai.ui.components.PersianTextField
 import cu.thunder.ai.ui.components.SettingChangerDialog
 import cu.thunder.ai.ui.components.SettingsItem
 import cu.thunder.ai.ui.components.SettingsItemCard
+import cu.thunder.ai.utils.DataStoreHelper
+import kotlinx.coroutines.launch
 
 enum class ThemeSetting(val labelResId: Int) {
     System(R.string.theme_system),
@@ -33,6 +38,9 @@ fun SettingsScreen(
     onThemeChanged: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     var selectedTheme by remember {
         mutableStateOf(
             when {
@@ -41,16 +49,16 @@ fun SettingsScreen(
             }
         )
     }
-    var selectedModel by remember { mutableStateOf("liquid/lfm-2.5-1.2b-instruct:free") }
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showModelDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    var userName by remember { mutableStateOf("Usuario") }
+    var showNameDialog by remember { mutableStateOf(false) }
+    var tempName by remember { mutableStateOf("") }
 
-    val availableModels = listOf(
-        "liquid/lfm-2.5-1.2b-instruct:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-r1:free"
-    )
+    LaunchedEffect(Unit) {
+        DataStoreHelper.getUserName(context).collect { name ->
+            if (name != null) userName = name
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -72,8 +80,51 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Perfil de usuario
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        PersianText(
+                            text = userName,
+                            fontSize = androidx.compose.ui.unit.sp.TextUnit(18f, androidx.compose.ui.unit.TextUnitType.Sp),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(onClick = {
+                            tempName = userName
+                            showNameDialog = true
+                        }) {
+                            PersianText("Cambiar nombre", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
             // Tema
             item {
                 SettingChangerDialog(
@@ -86,6 +137,7 @@ fun SettingsScreen(
                     onSettingChange = { theme ->
                         selectedTheme = theme
                         onThemeChanged(theme == ThemeSetting.Dark)
+                        scope.launch { DataStoreHelper.saveDarkMode(context, theme == ThemeSetting.Dark) }
                     },
                     icon = { Icon(Icons.Outlined.DisplaySettings, stringResource(R.string.theme)) }
                 )
@@ -105,33 +157,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Modelo IA
-            item {
-                SettingChangerDialog(
-                    isEnabled = showModelDialog,
-                    title = stringResource(R.string.api_model),
-                    options = availableModels,
-                    currentSetting = selectedModel,
-                    onDismiss = { showModelDialog = false },
-                    displayProvider = { it },
-                    onSettingChange = { selectedModel = it },
-                    icon = { Icon(Icons.Outlined.Dataset, stringResource(R.string.api_model)) }
-                )
-
-                SettingsItemCard(title = stringResource(R.string.api_model)) {
-                    SettingsItem(onClick = { showModelDialog = true }) {
-                        Icon(Icons.Outlined.Dataset, stringResource(R.string.api_model))
-                        PersianText(selectedModel)
-                    }
-                    Button(
-                        onClick = { selectedModel = availableModels.first() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        PersianText(stringResource(R.string.change_it_to_default))
-                    }
-                }
-            }
-
             // Información
             item {
                 SettingsItemCard(title = stringResource(R.string.about)) {
@@ -147,5 +172,34 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showNameDialog = false },
+            title = { PersianText("Cambiar nombre") },
+            text = {
+                PersianTextField(
+                    value = tempName,
+                    onValueChange = { tempName = it },
+                    singleLine = true,
+                    placeholder = { PersianText("Tu nombre") }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    userName = tempName.ifBlank { "Usuario" }
+                    scope.launch { DataStoreHelper.saveUserName(context, userName) }
+                    showNameDialog = false
+                }) {
+                    PersianText("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNameDialog = false }) {
+                    PersianText("Cancelar")
+                }
+            }
+        )
     }
 }

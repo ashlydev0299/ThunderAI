@@ -1,7 +1,7 @@
 package cu.thunder.ai.navigation
 
 object NavRoutes {
-    const val HOME = "home"
+    const val CHAT_MAIN = "chat_main"
     const val CHAT = "chat/{chatId}"
     const val HISTORY = "history"
     const val SETTINGS = "settings"

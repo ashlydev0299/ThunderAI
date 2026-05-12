@@ -12,8 +12,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +36,7 @@ import cu.thunder.ai.R
 import cu.thunder.ai.ui.animation.AnimatedDots
 import cu.thunder.ai.ui.animation.TypewriterText
 import cu.thunder.ai.ui.components.PersianText
+import cu.thunder.ai.utils.DataStoreHelper
 import cu.thunder.ai.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -53,7 +52,7 @@ enum class ChatBubbleOwner {
 fun ChatScreen(
     chatId: Long,
     viewModel: ChatViewModel,
-    onBack: () -> Unit,
+    onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     val messages by viewModel.currentMessages.collectAsState()
@@ -67,6 +66,13 @@ fun ChatScreen(
     val listState = rememberScrollState()
 
     var chatInput by remember { mutableStateOf("") }
+    var userName by remember { mutableStateOf("Usuario") }
+
+    LaunchedEffect(Unit) {
+        DataStoreHelper.getUserName(context).collect { name ->
+            if (name != null) userName = name
+        }
+    }
 
     LaunchedEffect(chatId) {
         if (chatId != -1L) viewModel.loadChat(chatId)
@@ -77,8 +83,6 @@ fun ChatScreen(
             listState.animateScrollTo(listState.maxValue)
         }
     }
-
-    BackHandler { onBack() }
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(context)
@@ -92,7 +96,7 @@ fun ChatScreen(
                     title = {
                         AnimatedContent(targetState = chatTitle) { title ->
                             PersianText(
-                                text = title.ifEmpty { stringResource(R.string.new_chat) },
+                                text = title.ifEmpty { "ThunderAI" },
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 fontWeight = FontWeight.Bold
@@ -100,11 +104,18 @@ fun ChatScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        if (chatId != -1L) {
+                            IconButton(onClick = {
+                                viewModel.newChat()
+                            }) {
+                                Icon(Icons.Outlined.ArrowBack, "Nuevo chat")
+                            }
                         }
                     },
                     actions = {
+                        IconButton(onClick = onNavigateToHistory) {
+                            Icon(Icons.Outlined.History, "Historial")
+                        }
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
                         }
@@ -126,6 +137,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
@@ -148,6 +160,30 @@ fun ChatScreen(
                                 text = stringResource(R.string.no_internet_connection),
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+
+                if (messages.isEmpty() && chatId == -1L) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("\u26A1", fontSize = MaterialTheme.typography.displayMedium.fontSize)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            PersianText(
+                                text = "Hola, $userName",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = MaterialTheme.typography.headlineSmall.fontSize
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            PersianText(
+                                text = "\u00BFEn qu\u00E9 puedo ayudarte?",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -239,7 +275,7 @@ fun ChatScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.Send,
+                                Icons.Outlined.Send,
                                 stringResource(R.string.send),
                                 tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
