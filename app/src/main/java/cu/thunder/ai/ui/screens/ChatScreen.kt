@@ -1,6 +1,6 @@
-package cu.thunder.ai.ui.screens
-
 @file:OptIn(ExperimentalFoundationApi::class)
+
+package cu.thunder.ai.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -9,9 +9,9 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -84,6 +86,7 @@ fun ChatScreen(
     var showDeleteMenu by remember { mutableStateOf<Long?>(null) }
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedChats by remember { mutableStateOf(setOf<Long>()) }
+    var replyTarget by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     var fontSize by remember { mutableStateOf(14) }
     LaunchedEffect(Unit) {
@@ -115,140 +118,56 @@ fun ChatScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // Título del historial
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Outlined.History, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Historial de chat",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Text("Historial de chat", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                     if (allChats.isNotEmpty()) {
                         IconButton(onClick = { isSelectionMode = !isSelectionMode; selectedChats = emptySet() }, modifier = Modifier.size(32.dp)) {
-                            Icon(
-                                if (isSelectionMode) Icons.Outlined.Close else Icons.Outlined.Checklist,
-                                if (isSelectionMode) "Cancelar" else "Seleccionar",
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(if (isSelectionMode) Icons.Outlined.Close else Icons.Outlined.Checklist, if (isSelectionMode) "Cancelar" else "Seleccionar", modifier = Modifier.size(20.dp))
                         }
                     }
                 }
-
                 HorizontalDivider()
-
                 if (isSelectionMode && selectedChats.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${selectedChats.size} seleccionados", style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = {
-                            selectedChats.forEach { viewModel.deleteChat(it) }
-                            isSelectionMode = false
-                            selectedChats = emptySet()
-                        }) {
-                            Text("Eliminar", color = MaterialTheme.colorScheme.error)
-                        }
+                        TextButton(onClick = { selectedChats.forEach { viewModel.deleteChat(it) }; isSelectionMode = false; selectedChats = emptySet() }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
                     }
                     HorizontalDivider()
                 }
-
-                // Lista de historial
                 if (allChats.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No hay chats aún", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No hay chats aún", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentPadding = PaddingValues(vertical = 4.dp)
-                    ) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
                         items(allChats, key = { it.id }) { chat ->
                             val isSelected = chat.id in selectedChats
-
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (isSelectionMode) {
-                                                selectedChats = if (isSelected) selectedChats - chat.id else selectedChats + chat.id
-                                            } else {
-                                                scope.launch { drawerState.close() }
-                                                viewModel.loadChat(chat.id)
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (!isSelectionMode) showDeleteMenu = chat.id
-                                        }
-                                    ),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).combinedClickable(
+                                    onClick = {
+                                        if (isSelectionMode) selectedChats = if (isSelected) selectedChats - chat.id else selectedChats + chat.id
+                                        else { scope.launch { drawerState.close() }; viewModel.loadChat(chat.id) }
+                                    },
+                                    onLongClick = { if (!isSelectionMode) showDeleteMenu = chat.id }
+                                ),
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (isSelectionMode) {
-                                        Checkbox(
-                                            checked = isSelected,
-                                            onCheckedChange = { checked ->
-                                                selectedChats = if (checked) selectedChats + chat.id else selectedChats - chat.id
-                                            },
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-
+                                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (isSelectionMode) { Checkbox(checked = isSelected, onCheckedChange = { checked -> selectedChats = if (checked) selectedChats + chat.id else selectedChats - chat.id }, modifier = Modifier.size(20.dp)); Spacer(modifier = Modifier.width(4.dp)) }
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            chat.title.ifEmpty { "Nuevo chat" },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(chat.timestamp)),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Text(chat.title.ifEmpty { "Nuevo chat" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(chat.timestamp)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-
-                                    if (chat.isPinned) {
-                                        Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                                    }
+                                    if (chat.isPinned) { Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary) }
                                 }
                             }
-
-                            // Menú contextual (long press)
-                            DropdownMenu(
-                                expanded = showDeleteMenu == chat.id,
-                                onDismissRequest = { showDeleteMenu = null }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(if (chat.isPinned) "Desfijar" else "Fijar") },
-                                    onClick = {
-                                        viewModel.pinChat(chat.id, !chat.isPinned)
-                                        showDeleteMenu = null
-                                    },
-                                    leadingIcon = { Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(18.dp)) }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
-                                    onClick = {
-                                        viewModel.deleteChat(chat.id)
-                                        showDeleteMenu = null
-                                    },
-                                    leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
-                                )
+                            DropdownMenu(expanded = showDeleteMenu == chat.id, onDismissRequest = { showDeleteMenu = null }) {
+                                DropdownMenuItem(text = { Text(if (chat.isPinned) "Desfijar" else "Fijar") }, onClick = { viewModel.pinChat(chat.id, !chat.isPinned); showDeleteMenu = null }, leadingIcon = { Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(18.dp)) })
+                                DropdownMenuItem(text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) }, onClick = { viewModel.deleteChat(chat.id); showDeleteMenu = null }, leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) })
                             }
                         }
                     }
@@ -263,59 +182,23 @@ fun ChatScreen(
                         Column {
                             TopAppBar(
                                 scrollBehavior = scrollBehavior,
-                                title = {
-                                    Text(
-                                        text = "ThunderAI",
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textAlign = TextAlign.Center
-                                    )
-                                },
-                                navigationIcon = {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Outlined.Menu, "Menú")
-                                    }
-                                },
+                                title = { Text("ThunderAI", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                                navigationIcon = { IconButton(onClick = { scope.launch { drawerState.open() } }) { Icon(Icons.Outlined.Menu, "Menú") } },
                                 actions = {
-                                    IconButton(onClick = { viewModel.newChat() }) {
-                                        Icon(Icons.Outlined.Add, "Nuevo chat")
-                                    }
-                                    IconButton(onClick = onNavigateToSettings) {
-                                        Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
-                                    }
+                                    IconButton(onClick = { viewModel.newChat() }) { Icon(Icons.Outlined.Add, "Nuevo chat") }
+                                    IconButton(onClick = onNavigateToSettings) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
                                 }
                             )
-                            Text(
-                                text = if (isOffline) "OFFLINE" else "ONLINE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isOffline) Color(0xFFE53935) else Color(0xFF4CAF50),
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
-                                textAlign = TextAlign.Center
-                            )
+                            Text(text = if (isOffline) "OFFLINE" else "ONLINE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isOffline) Color(0xFFE53935) else Color(0xFF4CAF50), modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp), textAlign = TextAlign.Center)
                         }
                     }
                 }
             ) { paddingValues ->
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues).imePadding()) {
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(listState)) {
-                        AnimatedVisibility(
-                            visible = isOffline,
-                            enter = slideInVertically() + fadeIn(),
-                            exit = slideOutVertically() + fadeOut()
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = context.getString(R.string.no_internet_connection).uppercase(),
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.Center
-                                )
+                        AnimatedVisibility(visible = isOffline, enter = slideInVertically() + fadeIn(), exit = slideOutVertically() + fadeOut()) {
+                            Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                                Text(text = context.getString(R.string.no_internet_connection).uppercase(), color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center)
                             }
                         }
 
@@ -335,10 +218,28 @@ fun ChatScreen(
                             val isUser = msg.role == "user"
                             val codeBlocks = extractCodeBlocks(msg.content)
 
-                            if (codeBlocks.isNotEmpty() && !isUser) {
-                                MessageWithCodeBlocks(content = msg.content, codeBlocks = codeBlocks, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L, context = context)
-                            } else {
-                                ChatBubbleDeepSeek(content = msg.content, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L)
+                            var offsetX by remember { mutableFloatStateOf(0f) }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .pointerInput(msg.content) {
+                                        detectHorizontalDragGestures(
+                                            onDragEnd = {
+                                                if (offsetX > 100f) {
+                                                    replyTarget = Pair(msg.content, index)
+                                                }
+                                                offsetX = 0f
+                                            },
+                                            onHorizontalDrag = { _, dragAmount -> offsetX += dragAmount }
+                                        )
+                                    }
+                            ) {
+                                if (codeBlocks.isNotEmpty() && !isUser) {
+                                    MessageWithCodeBlocks(content = msg.content, codeBlocks = codeBlocks, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L, context = context)
+                                } else {
+                                    ChatBubbleDeepSeek(content = msg.content, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L)
+                                }
                             }
 
                             DropdownMenu(expanded = showBubbleMenu == index, onDismissRequest = { showBubbleMenu = null }) {
@@ -353,6 +254,7 @@ fun ChatScreen(
                                     DropdownMenuItem(text = { Text("Me gusta") }, onClick = { showLikeFeedback = "Me gusto tu respuesta."; showBubbleMenu = null }, leadingIcon = { Icon(Icons.Outlined.ThumbUp, null, modifier = Modifier.size(18.dp)) })
                                     DropdownMenuItem(text = { Text("No me gusta") }, onClick = { showLikeFeedback = "No me gust\u00F3 tu respuesta."; showBubbleMenu = null }, leadingIcon = { Icon(Icons.Outlined.ThumbDown, null, modifier = Modifier.size(18.dp)) })
                                 }
+                                DropdownMenuItem(text = { Text("Responder") }, onClick = { replyTarget = Pair(msg.content, index); showBubbleMenu = null }, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Reply, null, modifier = Modifier.size(18.dp)) })
                                 DropdownMenuItem(text = { Text("Compartir") }, onClick = {
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg.content) }
                                     context.startActivity(Intent.createChooser(shareIntent, "Compartir"))
@@ -370,11 +272,21 @@ fun ChatScreen(
                                 }
                             }
                         }
-
                         Spacer(modifier = Modifier.height(80.dp))
                     }
 
-                    // Barra de escritura
+                    // Reply bar
+                    AnimatedVisibility(visible = replyTarget != null, enter = slideInVertically() + fadeIn(), exit = slideOutVertically() + fadeOut()) {
+                        Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.AutoMirrored.Outlined.Reply, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Respondiendo a: ${replyTarget?.first?.take(50)}...", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                IconButton(onClick = { replyTarget = null }, modifier = Modifier.size(24.dp)) { Icon(Icons.Outlined.Close, "Cancelar", modifier = Modifier.size(16.dp)) }
+                            }
+                        }
+                    }
+
                     Surface(
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(28.dp), shadowElevation = 4.dp,
@@ -382,9 +294,7 @@ fun ChatScreen(
                     ) {
                         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (inputEnabled) {
-                                IconButton(onClick = { viewModel.startVoiceInput(context) { result -> chatInput = result } }, modifier = Modifier.size(40.dp)) {
-                                    Icon(Icons.Outlined.Mic, "Voz", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                }
+                                IconButton(onClick = { viewModel.startVoiceInput(context) { result -> chatInput = result } }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Mic, "Voz", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
                                 OutlinedTextField(
                                     value = chatInput, onValueChange = { chatInput = it }, modifier = Modifier.weight(1f),
                                     placeholder = { PersianText(stringResource(R.string.chat_input), style = MaterialTheme.typography.bodyMedium, fontSize = fontSize.sp) },
@@ -393,18 +303,28 @@ fun ChatScreen(
                                     shape = RoundedCornerShape(24.dp),
                                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent, disabledBorderColor = Color.Transparent, focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
                                     keyboardOptions = KeyboardOptions(imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None, keyboardType = KeyboardType.Text, capitalization = KeyboardCapitalization.Sentences),
-                                    keyboardActions = KeyboardActions(onSend = { if (chatInput.isNotBlank()) { scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" } } })
+                                    keyboardActions = KeyboardActions(onSend = {
+                                        if (chatInput.isNotBlank()) {
+                                            scope.launch {
+                                                viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first)
+                                                chatInput = ""
+                                                replyTarget = null
+                                            }
+                                        }
+                                    })
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                IconButton(onClick = { if (chatInput.isNotBlank()) { scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" } } }, enabled = chatInput.isNotBlank() && !isLoading, modifier = Modifier.size(40.dp)) {
-                                    Icon(Icons.Outlined.Send, stringResource(R.string.send), tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                                }
-                            } else {
-                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    FloatingActionButton(onClick = { viewModel.cancelRequest() }, containerColor = MaterialTheme.colorScheme.error, modifier = Modifier.size(40.dp)) {
-                                        Icon(Icons.Outlined.Stop, stringResource(R.string.cancel), modifier = Modifier.size(20.dp))
+                                IconButton(onClick = {
+                                    if (chatInput.isNotBlank()) {
+                                        scope.launch {
+                                            viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first)
+                                            chatInput = ""
+                                            replyTarget = null
+                                        }
                                     }
-                                }
+                                }, enabled = chatInput.isNotBlank() && !isLoading, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Send, stringResource(R.string.send), tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
+                            } else {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { FloatingActionButton(onClick = { viewModel.cancelRequest() }, containerColor = MaterialTheme.colorScheme.error, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Stop, stringResource(R.string.cancel), modifier = Modifier.size(20.dp)) } }
                             }
                         }
                     }
@@ -413,8 +333,6 @@ fun ChatScreen(
         }
     )
 }
-
-// ========== BURBUJAS Y CÓDIGO (sin cambios) ==========
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -435,11 +353,8 @@ data class CodeBlock(val language: String, val code: String)
 fun extractCodeBlocks(text: String): List<CodeBlock> {
     val regex = Regex("```(\\w*)\\n([\\s\\S]*?)```")
     return regex.findAll(text).map { result ->
-    CodeBlock(
-        language = result.groupValues[1].ifEmpty { "code" },
-        code = result.groupValues[2].trim()
-    )
-}.toList()
+        CodeBlock(language = result.groupValues[1].ifEmpty { "code" }, code = result.groupValues[2].trim())
+    }.toList()
 }
 
 @Composable
@@ -474,11 +389,7 @@ fun MessageWithCodeBlocks(content: String, codeBlocks: List<CodeBlock>, isUser: 
                 val firstCodeIndex = content.indexOf("```")
                 if (firstCodeIndex > 0) {
                     val textBefore = content.substring(0, firstCodeIndex).trim()
-                    if (textBefore.isNotEmpty()) {
-                        if (isTypewriter && isNewChat) TypewriterText(text = textBefore, fontSize = fontSize.sp, color = textColor)
-                        else Text(text = textBefore, fontSize = fontSize.sp, color = textColor)
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                    if (textBefore.isNotEmpty()) { if (isTypewriter && isNewChat) TypewriterText(text = textBefore, fontSize = fontSize.sp, color = textColor) else Text(text = textBefore, fontSize = fontSize.sp, color = textColor); Spacer(modifier = Modifier.height(8.dp)) }
                 }
                 codeBlocks.forEach { block -> CodeBlockCard(language = block.language, code = block.code, context = context); Spacer(modifier = Modifier.height(4.dp)) }
             }

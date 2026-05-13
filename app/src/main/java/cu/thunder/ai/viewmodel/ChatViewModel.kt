@@ -118,10 +118,11 @@ class ChatViewModel : ViewModel() {
         _currentChatTitle.value = ""
     }
 
-    fun sendMessage(content: String) {
+    fun sendMessage(content: String, replyTo: String? = null) {
         if (content.isBlank()) return
         if (!isDbInitialized) return
         viewModelScope.launch {
+            val fullMessage = if (replyTo != null) "[Respondiendo a: \"$replyTo\"]\n\n$content" else content
             val userMsg = ChatMessage(content = content.trim(), role = "user")
             _currentMessages.value = _currentMessages.value + userMsg
             var chatId = _currentChatId.value
@@ -135,7 +136,7 @@ class ChatViewModel : ViewModel() {
             _isLoading.value = true; _inputEnabled.value = false
             val history = buildHistory()
             chatJob = launch(Dispatchers.IO) {
-                val result = DeepSeekApiService.sendMessage(content.trim(), history)
+                val result = DeepSeekApiService.sendMessage(fullMessage, history)
                 withContext(Dispatchers.Main) {
                     result.onSuccess { response ->
                         val assistantMsg = ChatMessage(content = response, role = "assistant")
