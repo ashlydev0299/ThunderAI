@@ -1,5 +1,7 @@
 package cu.thunder.ai.ui.screens
 
+@file:OptIn(ExperimentalFoundationApi::class)
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -432,7 +434,12 @@ fun ChatBubbleDeepSeek(content: String, isUser: Boolean, fontSize: Int, onLongPr
 data class CodeBlock(val language: String, val code: String)
 fun extractCodeBlocks(text: String): List<CodeBlock> {
     val regex = Regex("```(\\w*)\\n([\\s\\S]*?)```")
-    return regex.findAll(text).map { CodeBlock(language = match.groupValues[1].ifEmpty { "code" }, code = match.groupValues[2].trim()) }.toList()
+    return regex.findAll(text).map { result ->
+    CodeBlock(
+        language = result.groupValues[1].ifEmpty { "code" },
+        code = result.groupValues[2].trim()
+    )
+}.toList()
 }
 
 @Composable
