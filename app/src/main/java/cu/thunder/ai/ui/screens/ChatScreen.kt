@@ -11,6 +11,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -33,15 +35,19 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cu.thunder.ai.R
+import cu.thunder.ai.data.local.ChatEntity
 import cu.thunder.ai.ui.animation.AnimatedDots
 import cu.thunder.ai.ui.animation.TypewriterText
 import cu.thunder.ai.ui.components.PersianText
 import cu.thunder.ai.utils.DataStoreHelper
 import cu.thunder.ai.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 enum class ChatBubbleOwner {
     User, Assistant;
@@ -50,19 +56,11 @@ enum class ChatBubbleOwner {
     }
 }
 
-enum class NavigationItem(val label: String, val icon: @Composable () -> Unit) {
-    NewChat("Nuevo Chat", { Icon(Icons.Outlined.Chat, null) }),
-    History("Historial", { Icon(Icons.Outlined.History, null) }),
-    Settings("Ajustes", { Icon(Icons.Outlined.Settings, null) }),
-    About("Acerca de", { Icon(Icons.Outlined.Info, null) })
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     chatId: Long,
     viewModel: ChatViewModel,
-    onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit
 ) {
@@ -70,6 +68,7 @@ fun ChatScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isOffline by viewModel.isOffline.collectAsState()
     val inputEnabled by viewModel.inputEnabled.collectAsState()
+    val allChats by viewModel.allChats.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberScrollState()
@@ -80,7 +79,9 @@ fun ChatScreen(
     var userName by remember { mutableStateOf<String?>(null) }
     var showBubbleMenu by remember { mutableStateOf<Int?>(null) }
     var showLikeFeedback by remember { mutableStateOf<String?>(null) }
-    var selectedItem by remember { mutableStateOf(NavigationItem.NewChat) }
+    var showDeleteMenu by remember { mutableStateOf<Long?>(null) }
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedChats by remember { mutableStateOf(setOf<Long>()) }
 
     var fontSize by remember { mutableStateOf(14) }
     LaunchedEffect(Unit) {
@@ -108,30 +109,147 @@ fun ChatScreen(
         }
     }
 
-    val navigateTo: (NavigationItem) -> Unit = { item ->
-        scope.launch { drawerState.close() }
-        selectedItem = item
-        when (item) {
-            NavigationItem.NewChat -> viewModel.newChat()
-            NavigationItem.History -> onNavigateToHistory()
-            NavigationItem.Settings -> onNavigateToSettings()
-            NavigationItem.About -> onNavigateToAbout()
-        }
-    }
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(Modifier.height(16.dp))
-                NavigationItem.entries.forEach { item ->
-                    NavigationDrawerItem(
-                        modifier = Modifier.padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        icon = item.icon,
-                        label = { Text(item.label) },
-                        selected = selectedItem == item,
-                        onClick = { navigateTo(item) }
+                // Título del historial
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.History, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Historial de chat",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (allChats.isNotEmpty()) {
+                        IconButton(onClick = { isSelectionMode = !isSelectionMode; selectedChats = emptySet() }, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                if (isSelectionMode) Icons.Outlined.Close else Icons.Outlined.Checklist,
+                                if (isSelectionMode) "Cancelar" else "Seleccionar",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                if (isSelectionMode && selectedChats.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${selectedChats.size} seleccionados", style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = {
+                            selectedChats.forEach { viewModel.deleteChat(it) }
+                            isSelectionMode = false
+                            selectedChats = emptySet()
+                        }) {
+                            Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    HorizontalDivider()
+                }
+
+                // Lista de historial
+                if (allChats.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text("No hay chats aún", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(allChats, key = { it.id }) { chat ->
+                            val isSelected = chat.id in selectedChats
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (isSelectionMode) {
+                                                selectedChats = if (isSelected) selectedChats - chat.id else selectedChats + chat.id
+                                            } else {
+                                                scope.launch { drawerState.close() }
+                                                viewModel.loadChat(chat.id)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (!isSelectionMode) showDeleteMenu = chat.id
+                                        }
+                                    ),
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isSelectionMode) {
+                                        Checkbox(
+                                            checked = isSelected,
+                                            onCheckedChange = { checked ->
+                                                selectedChats = if (checked) selectedChats + chat.id else selectedChats - chat.id
+                                            },
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            chat.title.ifEmpty { "Nuevo chat" },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(chat.timestamp)),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    if (chat.isPinned) {
+                                        Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+
+                            // Menú contextual (long press)
+                            DropdownMenu(
+                                expanded = showDeleteMenu == chat.id,
+                                onDismissRequest = { showDeleteMenu = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(if (chat.isPinned) "Desfijar" else "Fijar") },
+                                    onClick = {
+                                        viewModel.pinChat(chat.id, !chat.isPinned)
+                                        showDeleteMenu = null
+                                    },
+                                    leadingIcon = { Icon(Icons.Outlined.PushPin, null, modifier = Modifier.size(18.dp)) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        viewModel.deleteChat(chat.id)
+                                        showDeleteMenu = null
+                                    },
+                                    leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -161,7 +279,7 @@ fun ChatScreen(
                                     IconButton(onClick = { viewModel.newChat() }) {
                                         Icon(Icons.Outlined.Add, "Nuevo chat")
                                     }
-                                    IconButton(onClick = { navigateTo(NavigationItem.Settings) }) {
+                                    IconButton(onClick = onNavigateToSettings) {
                                         Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
                                     }
                                 }
@@ -175,11 +293,6 @@ fun ChatScreen(
                                 textAlign = TextAlign.Center
                             )
                         }
-                    }
-                },
-                snackbarHost = {
-                    SnackbarHost(viewModel.snackbarHost) { data ->
-                        PersianText(text = data.visuals.message, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(16.dp))
                     }
                 }
             ) { paddingValues ->
@@ -221,70 +334,28 @@ fun ChatScreen(
                             val codeBlocks = extractCodeBlocks(msg.content)
 
                             if (codeBlocks.isNotEmpty() && !isUser) {
-                                MessageWithCodeBlocks(
-                                    content = msg.content,
-                                    codeBlocks = codeBlocks,
-                                    isUser = isUser,
-                                    fontSize = fontSize,
-                                    onLongPress = { showBubbleMenu = index },
-                                    isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading,
-                                    isNewChat = chatId == -1L,
-                                    context = context
-                                )
+                                MessageWithCodeBlocks(content = msg.content, codeBlocks = codeBlocks, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L, context = context)
                             } else {
-                                ChatBubbleDeepSeek(
-                                    content = msg.content,
-                                    isUser = isUser,
-                                    fontSize = fontSize,
-                                    onLongPress = { showBubbleMenu = index },
-                                    isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading,
-                                    isNewChat = chatId == -1L
-                                )
+                                ChatBubbleDeepSeek(content = msg.content, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L)
                             }
 
-                            DropdownMenu(
-                                expanded = showBubbleMenu == index,
-                                onDismissRequest = { showBubbleMenu = null }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Copiar") },
-                                    onClick = {
-                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("", msg.content))
-                                        Toast.makeText(context, context.getString(R.string.text_copied), Toast.LENGTH_SHORT).show()
-                                        showBubbleMenu = null
-                                    },
-                                    leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp)) }
-                                )
+                            DropdownMenu(expanded = showBubbleMenu == index, onDismissRequest = { showBubbleMenu = null }) {
+                                DropdownMenuItem(text = { Text("Copiar") }, onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("", msg.content))
+                                    Toast.makeText(context, context.getString(R.string.text_copied), Toast.LENGTH_SHORT).show()
+                                    showBubbleMenu = null
+                                }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp)) })
                                 if (!isUser) {
-                                    DropdownMenuItem(
-                                        text = { Text("Regenerar") },
-                                        onClick = { viewModel.regenerate(); showBubbleMenu = null },
-                                        leadingIcon = { Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(18.dp)) }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Me gusta") },
-                                        onClick = { showLikeFeedback = "Me gusto tu respuesta."; showBubbleMenu = null },
-                                        leadingIcon = { Icon(Icons.Outlined.ThumbUp, null, modifier = Modifier.size(18.dp)) }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("No me gusta") },
-                                        onClick = { showLikeFeedback = "No me gust\u00F3 tu respuesta."; showBubbleMenu = null },
-                                        leadingIcon = { Icon(Icons.Outlined.ThumbDown, null, modifier = Modifier.size(18.dp)) }
-                                    )
+                                    DropdownMenuItem(text = { Text("Regenerar") }, onClick = { viewModel.regenerate(); showBubbleMenu = null }, leadingIcon = { Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(18.dp)) })
+                                    DropdownMenuItem(text = { Text("Me gusta") }, onClick = { showLikeFeedback = "Me gusto tu respuesta."; showBubbleMenu = null }, leadingIcon = { Icon(Icons.Outlined.ThumbUp, null, modifier = Modifier.size(18.dp)) })
+                                    DropdownMenuItem(text = { Text("No me gusta") }, onClick = { showLikeFeedback = "No me gust\u00F3 tu respuesta."; showBubbleMenu = null }, leadingIcon = { Icon(Icons.Outlined.ThumbDown, null, modifier = Modifier.size(18.dp)) })
                                 }
-                                DropdownMenuItem(
-                                    text = { Text("Compartir") },
-                                    onClick = {
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, msg.content)
-                                        }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Compartir"))
-                                        showBubbleMenu = null
-                                    },
-                                    leadingIcon = { Icon(Icons.Outlined.Share, null, modifier = Modifier.size(18.dp)) }
-                                )
+                                DropdownMenuItem(text = { Text("Compartir") }, onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg.content) }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Compartir"))
+                                    showBubbleMenu = null
+                                }, leadingIcon = { Icon(Icons.Outlined.Share, null, modifier = Modifier.size(18.dp)) })
                             }
                         }
 
@@ -301,60 +372,29 @@ fun ChatScreen(
                         Spacer(modifier = Modifier.height(80.dp))
                     }
 
+                    // Barra de escritura
                     Surface(
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        shadowElevation = 4.dp,
+                        shape = RoundedCornerShape(28.dp), shadowElevation = 4.dp,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (inputEnabled) {
                                 IconButton(onClick = { viewModel.startVoiceInput(context) { result -> chatInput = result } }, modifier = Modifier.size(40.dp)) {
                                     Icon(Icons.Outlined.Mic, "Voz", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                 }
-
                                 OutlinedTextField(
-                                    value = chatInput,
-                                    onValueChange = { chatInput = it },
-                                    modifier = Modifier.weight(1f),
+                                    value = chatInput, onValueChange = { chatInput = it }, modifier = Modifier.weight(1f),
                                     placeholder = { PersianText(stringResource(R.string.chat_input), style = MaterialTheme.typography.bodyMedium, fontSize = fontSize.sp) },
-                                    maxLines = 4,
-                                    enabled = !isLoading,
+                                    maxLines = 4, enabled = !isLoading,
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize.sp),
                                     shape = RoundedCornerShape(24.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color.Transparent,
-                                        unfocusedBorderColor = Color.Transparent,
-                                        disabledBorderColor = Color.Transparent,
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent
-                                    ),
-                                    keyboardOptions = KeyboardOptions(
-                                        imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None,
-                                        keyboardType = KeyboardType.Text,
-                                        capitalization = KeyboardCapitalization.Sentences
-                                    ),
-                                    keyboardActions = KeyboardActions(onSend = {
-                                        if (chatInput.isNotBlank()) {
-                                            scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" }
-                                        }
-                                    })
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent, disabledBorderColor = Color.Transparent, focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent),
+                                    keyboardOptions = KeyboardOptions(imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None, keyboardType = KeyboardType.Text, capitalization = KeyboardCapitalization.Sentences),
+                                    keyboardActions = KeyboardActions(onSend = { if (chatInput.isNotBlank()) { scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" } } })
                                 )
-
                                 Spacer(modifier = Modifier.width(4.dp))
-
-                                IconButton(
-                                    onClick = {
-                                        if (chatInput.isNotBlank()) {
-                                            scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" }
-                                        }
-                                    },
-                                    enabled = chatInput.isNotBlank() && !isLoading,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
+                                IconButton(onClick = { if (chatInput.isNotBlank()) { scope.launch { viewModel.sendMessage(chatInput.trim()); chatInput = "" } } }, enabled = chatInput.isNotBlank() && !isLoading, modifier = Modifier.size(40.dp)) {
                                     Icon(Icons.Outlined.Send, stringResource(R.string.send), tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                             } else {
@@ -372,98 +412,55 @@ fun ChatScreen(
     )
 }
 
+// ========== BURBUJAS Y CÓDIGO (sin cambios) ==========
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatBubbleDeepSeek(
-    content: String,
-    isUser: Boolean,
-    fontSize: Int,
-    onLongPress: () -> Unit,
-    isTypewriter: Boolean,
-    isNewChat: Boolean
-) {
+fun ChatBubbleDeepSeek(content: String, isUser: Boolean, fontSize: Int, onLongPress: () -> Unit, isTypewriter: Boolean, isNewChat: Boolean) {
     val arrangement = if (isUser) Arrangement.End else Arrangement.Start
     val bgColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isUser) 16.dp else 4.dp, bottomEnd = if (isUser) 4.dp else 16.dp)
-
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = arrangement) {
         Surface(modifier = Modifier.widthIn(max = 320.dp).combinedClickable(onClick = {}, onLongClick = onLongPress), shape = shape, color = bgColor, shadowElevation = 0.dp) {
-            if (isTypewriter && isNewChat) {
-                TypewriterText(text = content, modifier = Modifier.padding(12.dp), fontSize = fontSize.sp, color = textColor)
-            } else {
-                Text(text = content, modifier = Modifier.padding(12.dp), fontSize = fontSize.sp, color = textColor)
-            }
+            if (isTypewriter && isNewChat) TypewriterText(text = content, modifier = Modifier.padding(12.dp), fontSize = fontSize.sp, color = textColor)
+            else Text(text = content, modifier = Modifier.padding(12.dp), fontSize = fontSize.sp, color = textColor)
         }
     }
 }
 
 data class CodeBlock(val language: String, val code: String)
-
 fun extractCodeBlocks(text: String): List<CodeBlock> {
     val regex = Regex("```(\\w*)\\n([\\s\\S]*?)```")
-    return regex.findAll(text).map { match ->
-        CodeBlock(
-            language = match.groupValues[1].ifEmpty { "code" },
-            code = match.groupValues[2].trim()
-        )
-    }.toList()
+    return regex.findAll(text).map { CodeBlock(language = match.groupValues[1].ifEmpty { "code" }, code = match.groupValues[2].trim()) }.toList()
 }
 
 @Composable
 fun CodeBlockCard(language: String, code: String, context: Context) {
     var showCopied by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
-    ) {
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))) {
         Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(text = language, color = Color(0xFF64B5F6), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 IconButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("", code))
-                    showCopied = true
+                    clipboard.setPrimaryClip(ClipData.newPlainText("", code)); showCopied = true
                     Toast.makeText(context, "Código copiado", Toast.LENGTH_SHORT).show()
-                }, modifier = Modifier.size(28.dp)) {
-                    Icon(if (showCopied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, tint = Color(0xFF64B5F6), modifier = Modifier.size(16.dp))
-                }
+                }, modifier = Modifier.size(28.dp)) { Icon(if (showCopied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, tint = Color(0xFF64B5F6), modifier = Modifier.size(16.dp)) }
             }
             HorizontalDivider(color = Color(0xFF2A2A4E))
-            Text(
-                text = code,
-                modifier = Modifier.padding(12.dp),
-                fontFamily = FontFamily.Monospace,
-                fontSize = 13.sp,
-                color = Color(0xFFE0E0E0)
-            )
+            Text(text = code, modifier = Modifier.padding(12.dp), fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFFE0E0E0))
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageWithCodeBlocks(
-    content: String,
-    codeBlocks: List<CodeBlock>,
-    isUser: Boolean,
-    fontSize: Int,
-    onLongPress: () -> Unit,
-    isTypewriter: Boolean,
-    isNewChat: Boolean,
-    context: Context
-) {
+fun MessageWithCodeBlocks(content: String, codeBlocks: List<CodeBlock>, isUser: Boolean, fontSize: Int, onLongPress: () -> Unit, isTypewriter: Boolean, isNewChat: Boolean, context: Context) {
     val arrangement = if (isUser) Arrangement.End else Arrangement.Start
     val bgColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     val shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isUser) 16.dp else 4.dp, bottomEnd = if (isUser) 4.dp else 16.dp)
-
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalAlignment = if (arrangement == Arrangement.End) Alignment.End else Alignment.Start) {
         Surface(modifier = Modifier.widthIn(max = 350.dp).combinedClickable(onClick = {}, onLongClick = onLongPress), shape = shape, color = bgColor, shadowElevation = 0.dp) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -471,18 +468,12 @@ fun MessageWithCodeBlocks(
                 if (firstCodeIndex > 0) {
                     val textBefore = content.substring(0, firstCodeIndex).trim()
                     if (textBefore.isNotEmpty()) {
-                        if (isTypewriter && isNewChat) {
-                            TypewriterText(text = textBefore, fontSize = fontSize.sp, color = textColor)
-                        } else {
-                            Text(text = textBefore, fontSize = fontSize.sp, color = textColor)
-                        }
+                        if (isTypewriter && isNewChat) TypewriterText(text = textBefore, fontSize = fontSize.sp, color = textColor)
+                        else Text(text = textBefore, fontSize = fontSize.sp, color = textColor)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
-                codeBlocks.forEach { block ->
-                    CodeBlockCard(language = block.language, code = block.code, context = context)
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
+                codeBlocks.forEach { block -> CodeBlockCard(language = block.language, code = block.code, context = context); Spacer(modifier = Modifier.height(4.dp)) }
             }
         }
     }

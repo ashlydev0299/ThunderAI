@@ -9,5 +9,6 @@ data class ChatEntity(
     val id: Long = 0L,
     val title: String = "Nuevo chat",
     val lastMessage: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isPinned: Boolean = false
 )

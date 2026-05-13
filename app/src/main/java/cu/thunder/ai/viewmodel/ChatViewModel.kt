@@ -74,9 +74,7 @@ class ChatViewModel : ViewModel() {
                 "thunderai_responses",
                 "Respuestas de ThunderAI",
                 NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notificaciones cuando la IA termina de responder"
-            }
+            ).apply { description = "Notificaciones cuando la IA termina de responder" }
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
@@ -85,7 +83,6 @@ class ChatViewModel : ViewModel() {
     private fun showResponseNotification(response: String) {
         val context = appContext ?: return
         val shortPreview = if (response.length > 100) response.take(100) + "..." else response
-
         val notification = NotificationCompat.Builder(context, "thunderai_responses")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("ThunderAI respondió")
@@ -94,18 +91,13 @@ class ChatViewModel : ViewModel() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
-
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
     }
 
     fun loadAllChats() {
         if (!isDbInitialized) return
-        viewModelScope.launch {
-            chatDao.getAllChats().collect { chats ->
-                _allChats.value = chats.sortedByDescending { it.timestamp }
-            }
-        }
+        viewModelScope.launch { chatDao.getAllChats().collect { _allChats.value = it } }
     }
 
     fun loadChat(chatId: Long) {
@@ -114,11 +106,8 @@ class ChatViewModel : ViewModel() {
         viewModelScope.launch {
             val chat = chatDao.getChatById(chatId)
             _currentChatTitle.value = chat?.title ?: ""
-
             chatDao.getMessagesByChatId(chatId).collect { messages ->
-                _currentMessages.value = messages.map {
-                    ChatMessage(content = it.content, role = it.role)
-                }
+                _currentMessages.value = messages.map { ChatMessage(content = it.content, role = it.role) }
             }
         }
     }
@@ -132,62 +121,44 @@ class ChatViewModel : ViewModel() {
     fun sendMessage(content: String) {
         if (content.isBlank()) return
         if (!isDbInitialized) return
-
         viewModelScope.launch {
             val userMsg = ChatMessage(content = content.trim(), role = "user")
             _currentMessages.value = _currentMessages.value + userMsg
-
             var chatId = _currentChatId.value
             if (chatId == -1L) {
                 val title = if (content.length > 30) content.take(30) + "..." else content
                 chatId = chatDao.insertChat(ChatEntity(title = title, lastMessage = content, timestamp = System.currentTimeMillis()))
-                _currentChatId.value = chatId
-                _currentChatTitle.value = title
-                loadAllChats()
+                _currentChatId.value = chatId; _currentChatTitle.value = title; loadAllChats()
             }
-
             chatDao.insertMessage(ChatMessageEntity(chatId = chatId, role = "user", content = content.trim()))
             chatDao.updateChatLastMessage(chatId, content.trim())
-
-            _isLoading.value = true
-            _inputEnabled.value = false
-
+            _isLoading.value = true; _inputEnabled.value = false
             val history = buildHistory()
             chatJob = launch(Dispatchers.IO) {
                 val result = DeepSeekApiService.sendMessage(content.trim(), history)
-
                 withContext(Dispatchers.Main) {
                     result.onSuccess { response ->
                         val assistantMsg = ChatMessage(content = response, role = "assistant")
                         _currentMessages.value = _currentMessages.value + assistantMsg
-
                         launch {
                             chatDao.insertMessage(ChatMessageEntity(chatId = chatId, role = "assistant", content = response))
-                            chatDao.updateChatLastMessage(chatId, response)
-                            loadAllChats()
+                            chatDao.updateChatLastMessage(chatId, response); loadAllChats()
                             if (_currentMessages.value.size > 2) predictAndUpdateTitle(chatId)
                         }
                         showResponseNotification(response)
-                    }.onFailure { error ->
-                        val errorMsg = ChatMessage(
-    content = "Lo siento, no se pudo generar una respuesta. Si el problema persiste, contacte con el soporte.",
-    role = "assistant"
-)
-                        _currentMessages.value = _currentMessages.value + errorMsg
+                    }.onFailure {
+                        _currentMessages.value = _currentMessages.value + ChatMessage(
+                            content = "Lo siento, no se pudo generar una respuesta. Si el problema persiste, contacte con el soporte.",
+                            role = "assistant"
+                        )
                     }
-                    _isLoading.value = false
-                    _inputEnabled.value = true
+                    _isLoading.value = false; _inputEnabled.value = true
                 }
             }
         }
     }
 
-    fun cancelRequest() {
-        chatJob?.cancel()
-        _isLoading.value = false
-        _inputEnabled.value = true
-    }
-
+    fun cancelRequest() { chatJob?.cancel(); _isLoading.value = false; _inputEnabled.value = true }
     fun regenerate() {
         val msgs = _currentMessages.value
         if (msgs.isEmpty()) return
@@ -196,31 +167,31 @@ class ChatViewModel : ViewModel() {
     }
 
     fun startVoiceInput(context: Context, onResult: (String) -> Unit) {
-        try {
-            (context as? cu.thunder.ai.MainActivity)?.startVoiceRecognition { text -> onResult(text) }
-        } catch (e: Exception) {
-            Toast.makeText(context, "Reconocimiento de voz no disponible", Toast.LENGTH_SHORT).show()
-        }
+        try { (context as? cu.thunder.ai.MainActivity)?.startVoiceRecognition { text -> onResult(text) } }
+        catch (e: Exception) { Toast.makeText(context, "Reconocimiento de voz no disponible", Toast.LENGTH_SHORT).show() }
     }
 
     fun renameChat(chatId: Long, newTitle: String) {
         if (!isDbInitialized) return
-        viewModelScope.launch {
-            chatDao.updateChatTitle(chatId, newTitle)
-            loadAllChats()
-        }
+        viewModelScope.launch { chatDao.updateChatTitle(chatId, newTitle); loadAllChats() }
+    }
+
+    fun pinChat(chatId: Long, isPinned: Boolean) {
+        if (!isDbInitialized) return
+        viewModelScope.launch { chatDao.updateChatPinned(chatId, isPinned); loadAllChats() }
     }
 
     fun deleteChat(chatId: Long) {
         if (!isDbInitialized) return
         viewModelScope.launch {
             val chat = chatDao.getChatById(chatId)
-            if (chat != null) {
-                chatDao.deleteChat(chat)
-                loadAllChats()
-                if (_currentChatId.value == chatId) newChat()
-            }
+            if (chat != null) { chatDao.deleteChat(chat); loadAllChats(); if (_currentChatId.value == chatId) newChat() }
         }
+    }
+
+    fun deleteAllChats() {
+        if (!isDbInitialized) return
+        viewModelScope.launch { chatDao.deleteAllMessages(); chatDao.deleteAllChats(); loadAllChats(); newChat() }
     }
 
     fun checkConnectivity(context: Context) {
@@ -234,12 +205,7 @@ class ChatViewModel : ViewModel() {
         val history = mutableListOf<Pair<String, String>>()
         val msgs = _currentMessages.value
         var i = 0
-        while (i < msgs.size - 1) {
-            if (msgs[i].role == "user" && msgs[i + 1].role == "assistant") {
-                history.add(Pair(msgs[i].content, msgs[i + 1].content))
-                i += 2
-            } else i++
-        }
+        while (i < msgs.size - 1) { if (msgs[i].role == "user" && msgs[i + 1].role == "assistant") { history.add(Pair(msgs[i].content, msgs[i + 1].content)); i += 2 } else i++ }
         return history
     }
 
@@ -250,11 +216,7 @@ class ChatViewModel : ViewModel() {
             val result = DeepSeekApiService.sendMessage(prompt)
             result.onSuccess { predictedTitle ->
                 val clean = predictedTitle.trim().replace("\\n", "").removeSurrounding("\"")
-                if (clean.isNotBlank() && clean.length > 3) {
-                    _currentChatTitle.value = clean
-                    chatDao.updateChatTitle(chatId, clean)
-                    loadAllChats()
-                }
+                if (clean.isNotBlank() && clean.length > 3) { _currentChatTitle.value = clean; chatDao.updateChatTitle(chatId, clean); loadAllChats() }
             }
         } catch (_: Exception) { }
     }

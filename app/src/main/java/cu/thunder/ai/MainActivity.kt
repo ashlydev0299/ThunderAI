@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* granted or not, app continues */ }
+    ) { }
 
     fun startVoiceRecognition(callback: (String) -> Unit) {
         voiceResultCallback = callback
@@ -42,11 +42,8 @@ class MainActivity : ComponentActivity() {
             putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault().language)
             putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Habla ahora...")
         }
-        try {
-            startActivityForResult(intent, 123)
-        } catch (e: Exception) {
-            voiceResultCallback?.invoke("")
-        }
+        try { startActivityForResult(intent, 123) }
+        catch (e: Exception) { voiceResultCallback?.invoke("") }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
@@ -62,7 +59,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Solicitar permiso de notificaciones en Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -71,13 +67,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
-
             var isDarkMode by remember { mutableStateOf<Boolean?>(null) }
 
             LaunchedEffect(Unit) {
-                DataStoreHelper.getDarkMode(context).collect { dark ->
-                    isDarkMode = dark
-                }
+                DataStoreHelper.getDarkMode(context).collect { dark -> isDarkMode = dark }
             }
 
             if (isDarkMode == null) {
@@ -103,21 +96,8 @@ class MainActivity : ComponentActivity() {
                             ChatScreen(
                                 chatId = -1L,
                                 viewModel = chatViewModel,
-                                onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
                                 onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
                                 onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) }
-                            )
-                        }
-
-                        composable(NavRoutes.HISTORY) {
-                            HistoryScreen(
-                                viewModel = chatViewModel,
-                                onBack = { navController.popBackStack() },
-                                onChatSelected = { chatId ->
-                                    navController.navigate(NavRoutes.chat(chatId)) {
-                                        popUpTo(NavRoutes.CHAT_MAIN)
-                                    }
-                                }
                             )
                         }
 
@@ -129,7 +109,6 @@ class MainActivity : ComponentActivity() {
                             ChatScreen(
                                 chatId = chatId,
                                 viewModel = chatViewModel,
-                                onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
                                 onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
                                 onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) }
                             )
@@ -141,18 +120,16 @@ class MainActivity : ComponentActivity() {
                                 isDarkMode = isDarkMode!!,
                                 onThemeChanged = { dark ->
                                     isDarkMode = dark
-                                    scope.launch {
-                                        DataStoreHelper.saveDarkMode(context, dark)
-                                    }
+                                    scope.launch { DataStoreHelper.saveDarkMode(context, dark) }
                                 },
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onNavigateToAbout = { navController.navigate(NavRoutes.ABOUT) },
+                                onClearHistory = { chatViewModel.deleteAllChats() }
                             )
                         }
 
                         composable(NavRoutes.ABOUT) {
-                            AboutScreen(
-                                onBack = { navController.popBackStack() }
-                            )
+                            AboutScreen(onBack = { navController.popBackStack() })
                         }
                     }
                 }
