@@ -51,15 +51,18 @@ fun SettingsScreen(
     var proactiveMessages by remember { mutableStateOf(true) }
     var locationAccess by remember { mutableStateOf(false) }
 
-    // Cargar valores guardados
+    var hasLoaded by remember { mutableStateOf(false) }
+
+    // Cargar valores guardados SOLO UNA VEZ
     LaunchedEffect(Unit) {
-        DataStoreHelper.getFontSize(context).collect { fontSize = it }
-        DataStoreHelper.getUserName(context).collect { userName = it }
-        DataStoreHelper.getNotificationsEnabled(context).collect { notificationsEnabled = it }
-        DataStoreHelper.getInAppNotifications(context).collect { inAppNotifications = it }
-        DataStoreHelper.getPopupNotifications(context).collect { popupNotifications = it }
-        DataStoreHelper.getProactiveMessages(context).collect { proactiveMessages = it }
-        DataStoreHelper.getLocationAccess(context).collect { locationAccess = it }
+        DataStoreHelper.getFontSize(context).first().let { fontSize = it }
+        DataStoreHelper.getUserName(context).first().let { userName = it }
+        DataStoreHelper.getNotificationsEnabled(context).first().let { notificationsEnabled = it }
+        DataStoreHelper.getInAppNotifications(context).first().let { inAppNotifications = it }
+        DataStoreHelper.getPopupNotifications(context).first().let { popupNotifications = it }
+        DataStoreHelper.getProactiveMessages(context).first().let { proactiveMessages = it }
+        DataStoreHelper.getLocationAccess(context).first().let { locationAccess = it }
+        hasLoaded = true
     }
 
     Scaffold(
@@ -74,6 +77,13 @@ fun SettingsScreen(
             }
         }
     ) { paddingValues ->
+        if (!hasLoaded) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -116,7 +126,10 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Notifications,
                     title = "Notificaciones",
                     checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it; scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) } }
+                    onCheckedChange = {
+                        notificationsEnabled = it
+                        scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) }
+                    }
                 )
             }
             item {
@@ -125,7 +138,10 @@ fun SettingsScreen(
                     title = "Acceso a la ubicación",
                     subtitle = "Permite mejor precisión de contenido",
                     checked = locationAccess,
-                    onCheckedChange = { locationAccess = it; scope.launch { DataStoreHelper.saveLocationAccess(context, it) } }
+                    onCheckedChange = {
+                        locationAccess = it
+                        scope.launch { DataStoreHelper.saveLocationAccess(context, it) }
+                    }
                 )
             }
 
@@ -136,7 +152,10 @@ fun SettingsScreen(
                     title = "Proactividad",
                     subtitle = "ThunderAI puede enviarte mensajes proactivos",
                     checked = proactiveMessages,
-                    onCheckedChange = { proactiveMessages = it; scope.launch { DataStoreHelper.saveProactiveMessages(context, it) } }
+                    onCheckedChange = {
+                        proactiveMessages = it
+                        scope.launch { DataStoreHelper.saveProactiveMessages(context, it) }
+                    }
                 )
             }
             item {
@@ -173,7 +192,10 @@ fun SettingsScreen(
                     icon = Icons.Outlined.NotificationsActive,
                     title = "Todas las Notificaciones",
                     checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it; scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) } }
+                    onCheckedChange = {
+                        notificationsEnabled = it
+                        scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) }
+                    }
                 )
             }
             item {
@@ -181,7 +203,10 @@ fun SettingsScreen(
                     icon = Icons.Outlined.PhoneAndroid,
                     title = "Notificaciones en la aplicación",
                     checked = inAppNotifications,
-                    onCheckedChange = { inAppNotifications = it; scope.launch { DataStoreHelper.saveInAppNotifications(context, it) } }
+                    onCheckedChange = {
+                        inAppNotifications = it
+                        scope.launch { DataStoreHelper.saveInAppNotifications(context, it) }
+                    }
                 )
             }
             item {
@@ -189,7 +214,10 @@ fun SettingsScreen(
                     icon = Icons.Outlined.FilterList,
                     title = "Notificaciones emergentes",
                     checked = popupNotifications,
-                    onCheckedChange = { popupNotifications = it; scope.launch { DataStoreHelper.savePopupNotifications(context, it) } }
+                    onCheckedChange = {
+                        popupNotifications = it
+                        scope.launch { DataStoreHelper.savePopupNotifications(context, it) }
+                    }
                 )
             }
 
@@ -207,7 +235,7 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Outlined.VolumeUp,
                     title = "Salida de voz",
-                    subtitle = "Próximamente - Texto a voz",
+                    subtitle = "Próximamente",
                     onClick = { }
                 )
             }
@@ -258,8 +286,16 @@ fun SettingsScreen(
             text = {
                 Column {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = !selectedDark, onClick = { selectedDark = false; onThemeChanged(false); scope.launch { DataStoreHelper.saveDarkMode(context, false) }; showThemeSelector = false }, label = { PersianText(stringResource(R.string.theme_light)) })
-                        FilterChip(selected = selectedDark, onClick = { selectedDark = true; onThemeChanged(true); scope.launch { DataStoreHelper.saveDarkMode(context, true) }; showThemeSelector = false }, label = { PersianText(stringResource(R.string.theme_dark)) })
+                        FilterChip(selected = !selectedDark, onClick = {
+                            selectedDark = false; onThemeChanged(false)
+                            scope.launch { DataStoreHelper.saveDarkMode(context, false) }
+                            showThemeSelector = false
+                        }, label = { PersianText(stringResource(R.string.theme_light)) })
+                        FilterChip(selected = selectedDark, onClick = {
+                            selectedDark = true; onThemeChanged(true)
+                            scope.launch { DataStoreHelper.saveDarkMode(context, true) }
+                            showThemeSelector = false
+                        }, label = { PersianText(stringResource(R.string.theme_dark)) })
                     }
                 }
             },
