@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalFoundationApi::class)
-
 package cu.thunder.ai.ui.screens
 
 import android.content.ClipData
@@ -9,6 +7,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -146,13 +145,19 @@ fun ChatScreen(
                         items(allChats, key = { it.id }) { chat ->
                             val isSelected = chat.id in selectedChats
                             Surface(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).combinedClickable(
-                                    onClick = {
-                                        if (isSelectionMode) selectedChats = if (isSelected) selectedChats - chat.id else selectedChats + chat.id
-                                        else { scope.launch { drawerState.close() }; viewModel.loadChat(chat.id) }
-                                    },
-                                    onLongClick = { if (!isSelectionMode) showDeleteMenu = chat.id }
-                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .then(
+                                        @OptIn(ExperimentalFoundationApi::class)
+                                        Modifier.combinedClickable(
+                                            onClick = {
+                                                if (isSelectionMode) selectedChats = if (isSelected) selectedChats - chat.id else selectedChats + chat.id
+                                                else { scope.launch { drawerState.close() }; viewModel.loadChat(chat.id) }
+                                            },
+                                            onLongClick = { if (!isSelectionMode) showDeleteMenu = chat.id }
+                                        )
+                                    ),
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                             ) {
@@ -217,23 +222,15 @@ fun ChatScreen(
                         messages.forEachIndexed { index, msg ->
                             val isUser = msg.role == "user"
                             val codeBlocks = extractCodeBlocks(msg.content)
-
                             var offsetX by remember { mutableFloatStateOf(0f) }
 
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .pointerInput(msg.content) {
-                                        detectHorizontalDragGestures(
-                                            onDragEnd = {
-                                                if (offsetX > 100f) {
-                                                    replyTarget = Pair(msg.content, index)
-                                                }
-                                                offsetX = 0f
-                                            },
-                                            onHorizontalDrag = { _, dragAmount -> offsetX += dragAmount }
-                                        )
-                                    }
+                                modifier = Modifier.fillMaxWidth().pointerInput(msg.content) {
+                                    detectHorizontalDragGestures(
+                                        onDragEnd = { if (offsetX > 100f) replyTarget = Pair(msg.content, index); offsetX = 0f },
+                                        onHorizontalDrag = { _, dragAmount -> offsetX += dragAmount }
+                                    )
+                                }
                             ) {
                                 if (codeBlocks.isNotEmpty() && !isUser) {
                                     MessageWithCodeBlocks(content = msg.content, codeBlocks = codeBlocks, isUser = isUser, fontSize = fontSize, onLongPress = { showBubbleMenu = index }, isTypewriter = chatId == -1L && !isUser && index == messages.size - 1 && isLoading, isNewChat = chatId == -1L, context = context)
@@ -275,7 +272,6 @@ fun ChatScreen(
                         Spacer(modifier = Modifier.height(80.dp))
                     }
 
-                    // Reply bar
                     AnimatedVisibility(visible = replyTarget != null, enter = slideInVertically() + fadeIn(), exit = slideOutVertically() + fadeOut()) {
                         Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -305,22 +301,14 @@ fun ChatScreen(
                                     keyboardOptions = KeyboardOptions(imeAction = if (chatInput.isNotBlank()) ImeAction.Send else ImeAction.None, keyboardType = KeyboardType.Text, capitalization = KeyboardCapitalization.Sentences),
                                     keyboardActions = KeyboardActions(onSend = {
                                         if (chatInput.isNotBlank()) {
-                                            scope.launch {
-                                                viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first)
-                                                chatInput = ""
-                                                replyTarget = null
-                                            }
+                                            scope.launch { viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first); chatInput = ""; replyTarget = null }
                                         }
                                     })
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 IconButton(onClick = {
                                     if (chatInput.isNotBlank()) {
-                                        scope.launch {
-                                            viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first)
-                                            chatInput = ""
-                                            replyTarget = null
-                                        }
+                                        scope.launch { viewModel.sendMessage(chatInput.trim(), replyTo = replyTarget?.first); chatInput = ""; replyTarget = null }
                                     }
                                 }, enabled = chatInput.isNotBlank() && !isLoading, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Send, stringResource(R.string.send), tint = if (chatInput.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
                             } else {
