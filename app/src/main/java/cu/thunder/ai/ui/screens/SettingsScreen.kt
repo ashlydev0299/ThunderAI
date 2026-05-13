@@ -40,7 +40,7 @@ fun SettingsScreen(
     var userName by remember { mutableStateOf("Usuario") }
     var showNameDialog by remember { mutableStateOf(false) }
     var tempName by remember { mutableStateOf("") }
-    var fontSize by remember { mutableStateOf(14) }
+    var fontSize by remember { mutableIntStateOf(14) }
     var showThemeSelector by remember { mutableStateOf(false) }
     var showFontSizeSelector by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
@@ -51,6 +51,7 @@ fun SettingsScreen(
     var proactiveMessages by remember { mutableStateOf(true) }
     var locationAccess by remember { mutableStateOf(false) }
 
+    // Cargar valores guardados
     LaunchedEffect(Unit) {
         DataStoreHelper.getFontSize(context).collect { fontSize = it }
         DataStoreHelper.getUserName(context).collect { userName = it }
@@ -98,11 +99,8 @@ fun SettingsScreen(
             }
 
             // ========== CUENTA ==========
-            item {
-                CategoryHeader("Cuenta")
-            }
+            item { CategoryHeader("Cuenta") }
 
-            // Nombre de usuario
             item {
                 SettingsRow(
                     icon = Icons.Outlined.Person,
@@ -112,17 +110,13 @@ fun SettingsScreen(
                 )
             }
 
-            // Permisos (Sub categoría)
             item { SubCategoryHeader("Permisos") }
             item {
                 SwitchRow(
                     icon = Icons.Outlined.Notifications,
                     title = "Notificaciones",
                     checked = notificationsEnabled,
-                    onCheckedChange = {
-                        notificationsEnabled = it
-                        scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) }
-                    }
+                    onCheckedChange = { notificationsEnabled = it; scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) } }
                 )
             }
             item {
@@ -131,14 +125,10 @@ fun SettingsScreen(
                     title = "Acceso a la ubicación",
                     subtitle = "Permite mejor precisión de contenido",
                     checked = locationAccess,
-                    onCheckedChange = {
-                        locationAccess = it
-                        scope.launch { DataStoreHelper.saveLocationAccess(context, it) }
-                    }
+                    onCheckedChange = { locationAccess = it; scope.launch { DataStoreHelper.saveLocationAccess(context, it) } }
                 )
             }
 
-            // Privacidad (Sub categoría)
             item { SubCategoryHeader("Privacidad") }
             item {
                 SwitchRow(
@@ -146,10 +136,7 @@ fun SettingsScreen(
                     title = "Proactividad",
                     subtitle = "ThunderAI puede enviarte mensajes proactivos",
                     checked = proactiveMessages,
-                    onCheckedChange = {
-                        proactiveMessages = it
-                        scope.launch { DataStoreHelper.saveProactiveMessages(context, it) }
-                    }
+                    onCheckedChange = { proactiveMessages = it; scope.launch { DataStoreHelper.saveProactiveMessages(context, it) } }
                 )
             }
             item {
@@ -186,10 +173,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.NotificationsActive,
                     title = "Todas las Notificaciones",
                     checked = notificationsEnabled,
-                    onCheckedChange = {
-                        notificationsEnabled = it
-                        scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) }
-                    }
+                    onCheckedChange = { notificationsEnabled = it; scope.launch { DataStoreHelper.saveNotificationsEnabled(context, it) } }
                 )
             }
             item {
@@ -197,10 +181,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.PhoneAndroid,
                     title = "Notificaciones en la aplicación",
                     checked = inAppNotifications,
-                    onCheckedChange = {
-                        inAppNotifications = it
-                        scope.launch { DataStoreHelper.saveInAppNotifications(context, it) }
-                    }
+                    onCheckedChange = { inAppNotifications = it; scope.launch { DataStoreHelper.saveInAppNotifications(context, it) } }
                 )
             }
             item {
@@ -208,10 +189,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.FilterList,
                     title = "Notificaciones emergentes",
                     checked = popupNotifications,
-                    onCheckedChange = {
-                        popupNotifications = it
-                        scope.launch { DataStoreHelper.savePopupNotifications(context, it) }
-                    }
+                    onCheckedChange = { popupNotifications = it; scope.launch { DataStoreHelper.savePopupNotifications(context, it) } }
                 )
             }
 
@@ -221,15 +199,15 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Outlined.Mic,
                     title = "Entrada de voz",
-                    subtitle = "Reconocimiento de voz a texto",
-                    onClick = { }
+                    subtitle = "Usa el micrófono en el chat",
+                    onClick = { onBack() }
                 )
             }
             item {
                 SettingsRow(
                     icon = Icons.Outlined.VolumeUp,
                     title = "Salida de voz",
-                    subtitle = "Texto a voz para respuestas",
+                    subtitle = "Próximamente - Texto a voz",
                     onClick = { }
                 )
             }
@@ -260,7 +238,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Versión
             item {
                 Text(
                     text = "v1.0",
@@ -281,26 +258,8 @@ fun SettingsScreen(
             text = {
                 Column {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = !selectedDark,
-                            onClick = {
-                                selectedDark = false
-                                onThemeChanged(false)
-                                scope.launch { DataStoreHelper.saveDarkMode(context, false) }
-                                showThemeSelector = false
-                            },
-                            label = { PersianText(stringResource(R.string.theme_light)) }
-                        )
-                        FilterChip(
-                            selected = selectedDark,
-                            onClick = {
-                                selectedDark = true
-                                onThemeChanged(true)
-                                scope.launch { DataStoreHelper.saveDarkMode(context, true) }
-                                showThemeSelector = false
-                            },
-                            label = { PersianText(stringResource(R.string.theme_dark)) }
-                        )
+                        FilterChip(selected = !selectedDark, onClick = { selectedDark = false; onThemeChanged(false); scope.launch { DataStoreHelper.saveDarkMode(context, false) }; showThemeSelector = false }, label = { PersianText(stringResource(R.string.theme_light)) })
+                        FilterChip(selected = selectedDark, onClick = { selectedDark = true; onThemeChanged(true); scope.launch { DataStoreHelper.saveDarkMode(context, true) }; showThemeSelector = false }, label = { PersianText(stringResource(R.string.theme_dark)) })
                     }
                 }
             },
@@ -318,20 +277,10 @@ fun SettingsScreen(
                 Column {
                     PersianText("$fontSize sp", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Slider(
-                        value = fontSize.toFloat(),
-                        onValueChange = { fontSize = it.toInt() },
-                        valueRange = 10f..22f,
-                        steps = 5
-                    )
+                    Slider(value = fontSize.toFloat(), onValueChange = { fontSize = it.toInt() }, valueRange = 10f..22f, steps = 5)
                 }
             },
-            confirmButton = {
-                Button(onClick = {
-                    scope.launch { DataStoreHelper.saveFontSize(context, fontSize) }
-                    showFontSizeSelector = false
-                }) { PersianText("Guardar") }
-            },
+            confirmButton = { Button(onClick = { scope.launch { DataStoreHelper.saveFontSize(context, fontSize) }; showFontSizeSelector = false }) { PersianText("Guardar") } },
             dismissButton = { TextButton(onClick = { showFontSizeSelector = false }) { PersianText("Cancelar") } }
         )
     }
@@ -359,12 +308,7 @@ fun SettingsScreen(
             onDismissRequest = { showClearDialog = false },
             title = { PersianText("Borrar historial") },
             text = { PersianText("¿Estás seguro de borrar todo el historial de chat?") },
-            confirmButton = {
-                Button(onClick = {
-                    onClearHistory()
-                    showClearDialog = false
-                }) { PersianText("Borrar") }
-            },
+            confirmButton = { Button(onClick = { onClearHistory(); showClearDialog = false }) { PersianText("Borrar") } },
             dismissButton = { TextButton(onClick = { showClearDialog = false }) { PersianText("Cancelar") } }
         )
     }
